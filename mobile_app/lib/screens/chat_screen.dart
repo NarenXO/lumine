@@ -1,0 +1,162 @@
+import 'package:flutter/material.dart';
+import '../services/app_controller.dart';
+import '../services/api_service.dart';
+import '../services/voice_service.dart';
+
+class ChatScreen extends StatefulWidget {
+  const ChatScreen({super.key});
+
+  @override
+  State<ChatScreen> createState() => _ChatScreenState();
+}
+
+class _ChatScreenState extends State<ChatScreen> {
+  final TextEditingController _controller = TextEditingController();
+  final VoiceService _voiceService = VoiceService();
+  final List<Map<String, String>> _messages = [];
+  bool _isLoading = false;
+
+  void _sendMessage() async {
+    if (_controller.text.isEmpty) return;
+
+    String userMessage = _controller.text;
+
+    setState(() {
+      _messages.add({"role": "user", "text": userMessage});
+      _isLoading = true;
+    });
+
+    _controller.clear();
+
+    try {
+      final result = await ApiService.analyzeMessage(userMessage);
+
+String emotion = result["emotion"];
+String response = result["response"];
+
+var scripture = result["scripture"];
+String scriptureText = scripture["text"];
+String scriptureRef = scripture["reference"];
+
+AppController().updateEmotion(emotion);
+
+if (mounted) {
+  setState(() {
+    _messages.add({"role": "lumine", "text": response});
+    _messages.add({
+      "role": "scripture",
+      "text": "\"$scriptureText\"\n— $scriptureRef"
+    });
+    _isLoading = false;
+  });
+}
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _messages.add({"role": "lumine", "text": "Connection error."});
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Reflection"),
+        backgroundColor: Colors.black,
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: _messages.length,
+              itemBuilder: (context, index) {
+                final msg = _messages[index];
+                bool isUser = msg["role"] == "user";
+
+                return Align(
+                  alignment:
+                      isUser ? Alignment.centerRight : Alignment.centerLeft,
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(vertical: 6),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isUser
+                          ? Colors.amberAccent.withOpacity(0.2)
+                          : Colors.white10,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Builder(
+  builder: (context) {
+    if (msg["role"] == "scripture") {
+      return Text(
+        msg["text"] ?? "",
+        style: const TextStyle(
+          color: Colors.lightBlueAccent,
+          fontStyle: FontStyle.italic,
+          fontSize: 14,
+        ),
+      );
+    }
+
+    return Text(
+      isUser ? "You: ${msg['text']}" : "Lumíne: ${msg['text']}",
+      style: TextStyle(
+        color: isUser ? Colors.amberAccent : Colors.white70,
+        fontSize: 15,
+      ),
+    );
+  },
+),
+                  ),
+                );
+              },
+            ),
+          ),
+          if (_isLoading)
+            const Padding(
+              padding: EdgeInsets.all(8),
+              child: Text(
+                "Lumíne is thinking...",
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.mic, color: Colors.amberAccent),
+                  onPressed: () async {
+                    _voiceService.startListening((text) {
+                      if (mounted) {
+                        setState(() {
+                          _controller.text = text;
+                        });
+                      }
+                    });
+                  },
+                ),
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    decoration: const InputDecoration(
+                      hintText: "Share what you're feeling...",
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.send, color: Colors.amberAccent),
+                  onPressed: _sendMessage,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
