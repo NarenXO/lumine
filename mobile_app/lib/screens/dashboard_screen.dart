@@ -3,6 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import '../services/app_controller.dart';
 import 'chat_screen.dart';
 import 'profile_screen.dart';
+import 'habits_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -142,13 +143,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     Widget screen;
-    if (_selectedIndex == 0) {
-      screen = _buildDashboard();
-    } else if (_selectedIndex == 1) {
-      screen = const ChatScreen();
-    } else {
-      screen = const ProfileScreen();
-    }
+if (_selectedIndex == 0) {
+  screen = _buildDashboard();
+} else if (_selectedIndex == 1) {
+  screen = const ChatScreen();
+} else if (_selectedIndex == 2) {
+  screen = const HabitsScreen();
+} else {
+  screen = const ProfileScreen();
+}
 
     return Scaffold(
       body: screen,
@@ -158,20 +161,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
         backgroundColor: Colors.black,
         selectedItemColor: Colors.amberAccent,
         unselectedItemColor: Colors.grey,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard),
-            label: 'Dashboard',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.chat_bubble_outline),
-            label: 'Chat',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            label: 'Profile',
-          ),
-        ],
+       items: const [
+  BottomNavigationBarItem(
+    icon: Icon(Icons.dashboard),
+    label: 'Dashboard',
+  ),
+  BottomNavigationBarItem(
+    icon: Icon(Icons.chat_bubble_outline),
+    label: 'Chat',
+  ),
+  BottomNavigationBarItem(
+    icon: Icon(Icons.self_improvement),
+    label: 'Habits',
+  ),
+  BottomNavigationBarItem(
+    icon: Icon(Icons.person_outline),
+    label: 'Profile',
+  ),
+],
       ),
     );
   }

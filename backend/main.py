@@ -1,4 +1,5 @@
 import os
+import random
 import requests
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -23,7 +24,13 @@ class MessageRequest(BaseModel):
     message: str
 
 
-# Emotion → Scripture theme mapping
+class HabitsRequest(BaseModel):
+    sleep: float
+    stress: float
+    social: float
+    rest: float
+
+
 EMOTION_THEME_MAP = {
     "anxiety": "peace",
     "gratitude": "thankfulness",
@@ -31,13 +38,8 @@ EMOTION_THEME_MAP = {
     "neutral": "hope",
 }
 
-import random
 
 def get_scripture(theme: str):
-    """
-    Fetch multiple related verses from YouVersion API based on theme
-    and return one randomly for variety.
-    """
     try:
         url = "https://developers.youversion.com/1.0/verses/search"
         headers = {
@@ -61,37 +63,46 @@ def get_scripture(theme: str):
         print("YouVersion error:", e)
 
     fallback_verses = [
-        {
-            "reference": "Philippians 4:6",
-            "text": "Do not be anxious about anything, but in every situation, by prayer and petition, with thanksgiving, present your requests to God."
-        },
-        {
-            "reference": "Psalm 23:1",
-            "text": "The Lord is my shepherd, I lack nothing."
-        },
-        {
-            "reference": "Isaiah 41:10",
-            "text": "So do not fear, for I am with you; do not be dismayed, for I am your God."
-        },
-        {
-            "reference": "Matthew 11:28",
-            "text": "Come to me, all you who are weary and burdened, and I will give you rest."
-        },
+        {"reference": "Philippians 4:6",
+         "text": "Do not be anxious about anything, but in every situation present your requests to God."},
+        {"reference": "Psalm 23:1",
+         "text": "The Lord is my shepherd, I lack nothing."},
+        {"reference": "Isaiah 41:10",
+         "text": "So do not fear, for I am with you."},
+        {"reference": "Matthew 11:28",
+         "text": "Come to me, all you who are weary and burdened, and I will give you rest."},
     ]
     return random.choice(fallback_verses)
 
 
 @app.post("/analyze")
+async def analyze_message(data: MessageRequest):
+    text = data.message.lower()
 
-class HabitsRequest(BaseModel):
-    sleep: float
-    stress: float
-    social: float
-    rest: float
+    emotion = "neutral"
+    response_text = "Tell me more."
+
+    if "anxious" in text:
+        emotion = "anxiety"
+        response_text = "I sense anxiety. Let's breathe for a moment."
+    elif "grateful" in text:
+        emotion = "gratitude"
+        response_text = "Gratitude shifts your spiritual posture."
+    elif "angry" in text:
+        emotion = "anger"
+        response_text = "Anger often hides deeper hurt. What is beneath it?"
+
+    theme = EMOTION_THEME_MAP.get(emotion, "hope")
+    scripture = get_scripture(theme)
+
+    return {
+        "emotion": emotion,
+        "response": response_text,
+        "scripture": scripture,
+    }
 
 
 @app.post("/habits")
-
 async def analyze_habits(data: HabitsRequest):
     insight = ""
     theme = "hope"
@@ -116,29 +127,5 @@ async def analyze_habits(data: HabitsRequest):
 
     return {
         "insight": insight,
-        "scripture": scripture,
-    }
-async def analyze_message(data: MessageRequest):
-    text = data.message.lower()
-
-    emotion = "neutral"
-    response_text = "Tell me more."
-
-    if "anxious" in text:
-        emotion = "anxiety"
-        response_text = "I sense anxiety. Let's breathe for a moment."
-    elif "grateful" in text:
-        emotion = "gratitude"
-        response_text = "Gratitude shifts your spiritual posture."
-    elif "angry" in text:
-        emotion = "anger"
-        response_text = "Anger often hides deeper hurt. What is beneath it?"
-
-    theme = EMOTION_THEME_MAP.get(emotion, "hope")
-    scripture = get_scripture(theme)
-
-    return {
-        "emotion": emotion,
-        "response": response_text,
         "scripture": scripture,
     }
