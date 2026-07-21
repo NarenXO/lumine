@@ -4,6 +4,7 @@ import '../services/app_controller.dart';
 import 'chat_screen.dart';
 import 'profile_screen.dart';
 import 'habits_screen.dart';
+import 'resonance_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -39,10 +40,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               "Reactivity",
               "Humility",
             ];
-            return RadarChartTitle(
-              text: titles[index],
-              angle: 0,
-            );
+            return RadarChartTitle(text: titles[index], angle: 0);
           },
           titleTextStyle: const TextStyle(
             color: Colors.white70,
@@ -114,10 +112,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                label,
-                style: const TextStyle(color: Colors.white70),
-              ),
+              Text(label, style: const TextStyle(color: Colors.white70)),
               Text(
                 clamped.toStringAsFixed(2),
                 style: const TextStyle(color: Colors.amberAccent),
@@ -143,15 +138,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     Widget screen;
-if (_selectedIndex == 0) {
-  screen = _buildDashboard();
-} else if (_selectedIndex == 1) {
-  screen = const ChatScreen();
-} else if (_selectedIndex == 2) {
-  screen = const HabitsScreen();
-} else {
-  screen = const ProfileScreen();
-}
+    if (_selectedIndex == 0) {
+      screen = _buildDashboard();
+    } else if (_selectedIndex == 1) {
+      screen = const ChatScreen();
+    } else if (_selectedIndex == 2) {
+      screen = const HabitsScreen();
+    } else if (_selectedIndex == 3) {
+      screen = const ResonanceScreen();
+    } else {
+      screen = const ProfileScreen();
+    }
 
     return Scaffold(
       body: screen,
@@ -161,24 +158,29 @@ if (_selectedIndex == 0) {
         backgroundColor: Colors.black,
         selectedItemColor: Colors.amberAccent,
         unselectedItemColor: Colors.grey,
-       items: const [
-  BottomNavigationBarItem(
-    icon: Icon(Icons.dashboard),
-    label: 'Dashboard',
-  ),
-  BottomNavigationBarItem(
-    icon: Icon(Icons.chat_bubble_outline),
-    label: 'Chat',
-  ),
-  BottomNavigationBarItem(
-    icon: Icon(Icons.self_improvement),
-    label: 'Habits',
-  ),
-  BottomNavigationBarItem(
-    icon: Icon(Icons.person_outline),
-    label: 'Profile',
-  ),
-],
+        type: BottomNavigationBarType.fixed,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.dashboard),
+            label: 'Dashboard',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.chat_bubble_outline),
+            label: 'Chat',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.self_improvement),
+            label: 'Habits',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.auto_awesome),
+            label: 'Resonance',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            label: 'Profile',
+          ),
+        ],
       ),
     );
   }

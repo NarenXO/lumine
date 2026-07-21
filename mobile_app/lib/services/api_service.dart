@@ -38,4 +38,18 @@ class ApiService {
       throw Exception("Failed to connect to backend");
     }
   }
+
+static Future<Map<String, dynamic>> getResonance() async {
+  final response = await http.get(
+    Uri.parse("https://lumine-backend-420v.onrender.com/resonance"),
+  );
+
+  if (response.statusCode == 200) {
+    return jsonDecode(response.body);
+  } else {
+    throw Exception("Resonance endpoint error");
+  }
+}
+
+
 }

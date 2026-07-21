@@ -3,6 +3,9 @@ import '../services/app_controller.dart';
 import '../services/api_service.dart';
 import '../services/voice_service.dart';
 import 'sacred_interruption_screen.dart';
+import '../services/tts_service.dart';
+
+
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
 
@@ -51,6 +54,8 @@ if (mounted) {
     _isLoading = false;
   });
 
+  TtsService.speak("$response. $scriptureText. $scriptureRef.");
+  
   // Sacred Interruption Trigger
   final controller = AppController();
   if (controller.anxiety >= 0.3 || controller.reactivity >= 0.3) {
