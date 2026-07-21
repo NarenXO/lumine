@@ -12,7 +12,7 @@ class HabitsScreen extends StatefulWidget {
 }
 
 class _HabitsScreenState extends State<HabitsScreen> {
-  final TtsService _tts = TtsService();
+ 
   final Random _random = Random();
   Timer? _ambientTimer;
 
@@ -135,7 +135,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
 
     final verse = verses[_random.nextInt(verses.length)];
 
-    await _tts.speak(verse);
+    await TtsService.speak(verse);
 
     if (mounted) {
       setState(() {
@@ -224,7 +224,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
         _loading = false;
       });
       if (_verse.isNotEmpty) {
-        await _tts.speak(_verse);
+       await TtsService.speak(_verse);
       }
     } catch (e) {
       setState(() {
