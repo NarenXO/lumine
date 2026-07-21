@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/app_controller.dart';
 import '../services/api_service.dart';
 import '../services/voice_service.dart';
-
+import 'sacred_interruption_screen.dart';
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
 
@@ -49,6 +49,23 @@ if (mounted) {
     });
     _isLoading = false;
   });
+
+  // Sacred Interruption Trigger
+  final controller = AppController();
+  if (controller.anxiety >= 0.3 || controller.reactivity >= 0.3) {
+    Future.delayed(const Duration(milliseconds: 400), () {
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => SacredInterruptionScreen(
+            scriptureText: scriptureText,
+            scriptureRef: scriptureRef,
+          ),
+        ),
+      );
+    });
+  }
 }
     } catch (e) {
       if (mounted) {
@@ -128,18 +145,54 @@ if (mounted) {
             padding: const EdgeInsets.all(12),
             child: Row(
               children: [
-                IconButton(
-                  icon: const Icon(Icons.mic, color: Colors.amberAccent),
-                  onPressed: () async {
-                    _voiceService.startListening((text) {
-                      if (mounted) {
-                        setState(() {
-                          _controller.text = text;
-                        });
-                      }
-                    });
-                  },
-                ),
+             IconButton(
+  icon: const Icon(Icons.mic, color: Colors.amberAccent),
+  onPressed: () async {
+    bool available = await _voiceService.init();
+    if (!available) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Mic not available")),
+      );
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Listening... speak now")),
+    );
+
+    String finalText = "";
+    bool alreadySent = false;
+
+    _voiceService.startListening((text) {
+      if (!mounted) return;
+      finalText = text;
+      setState(() {
+        _controller.text = text;
+      });
+    });
+
+    _voiceService.onSilence(() async {
+      if (alreadySent) return;
+      alreadySent = true;
+
+      await _voiceService.stopListening();
+      if (!mounted) return;
+
+      String captured = finalText.trim();
+      if (captured.isEmpty) return;
+
+      _controller.text = captured;
+      _sendMessage();
+
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (!mounted) return;
+        setState(() {
+          _controller.clear();
+        });
+      });
+    });
+  },
+),
                 Expanded(
                   child: TextField(
                     controller: _controller,

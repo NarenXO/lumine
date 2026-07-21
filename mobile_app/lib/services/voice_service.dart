@@ -4,6 +4,8 @@ import 'package:permission_handler/permission_handler.dart';
 class VoiceService {
   final SpeechToText _speech = SpeechToText();
   bool _isListening = false;
+  bool _isInitialized = false;
+  Function()? _onSilenceCallback;
 
   Future<bool> _requestMicPermission() async {
     var status = await Permission.microphone.request();
@@ -14,29 +16,58 @@ class VoiceService {
     bool granted = await _requestMicPermission();
     if (!granted) return false;
 
-    return await _speech.initialize(
+    if (_isInitialized) return true;
+
+    _isInitialized = await _speech.initialize(
       onError: (error) => print('Voice Error: $error'),
-      onStatus: (status) => print('Voice Status: $status'),
+      onStatus: (status) {
+  print('Voice Status: $status');
+  if (status == "done" || status == "notListening") {
+    _isListening = false;
+    if (_onSilenceCallback != null) {
+      final cb = _onSilenceCallback;
+      _onSilenceCallback = null; // fire only once
+      cb!();
+    }
+  }
+},
     );
+
+    return _isInitialized;
   }
 
   Future<void> startListening(Function(String) onResult) async {
-    if (_isListening) return;
+    if (!_isInitialized) {
+      bool ok = await init();
+      if (!ok) return;
+    }
 
-    bool available = await init();
-    if (!available) return;
+    if (_isListening) {
+      await _speech.stop();
+      _isListening = false;
+    }
 
     _isListening = true;
+
     _speech.listen(
       onResult: (result) {
         onResult(result.recognizedWords);
       },
+      listenMode: ListenMode.dictation,
+      partialResults: true,
+      cancelOnError: true,
+      pauseFor: const Duration(seconds: 2),
+      listenFor: const Duration(seconds: 15),
     );
   }
 
-  void stopListening() {
+  void onSilence(Function callback) {
+    _onSilenceCallback = () => callback();
+  }
+
+  Future<void> stopListening() async {
     _isListening = false;
-    _speech.stop();
+    await _speech.stop();
   }
 
   bool get isListening => _isListening;

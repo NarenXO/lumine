@@ -31,10 +31,12 @@ EMOTION_THEME_MAP = {
     "neutral": "hope",
 }
 
+import random
 
 def get_scripture(theme: str):
     """
-    Fetch a related verse from YouVersion API based on theme.
+    Fetch multiple related verses from YouVersion API based on theme
+    and return one randomly for variety.
     """
     try:
         url = "https://developers.youversion.com/1.0/verses/search"
@@ -42,14 +44,15 @@ def get_scripture(theme: str):
             "Authorization": f"Bearer {YOUVERSION_API_KEY}",
             "Accept": "application/json",
         }
-        params = {"query": theme}
+        params = {"query": theme, "limit": 10}
 
         response = requests.get(url, headers=headers, params=params, timeout=8)
 
         if response.status_code == 200:
             data = response.json()
-            if "verses" in data and len(data["verses"]) > 0:
-                verse = data["verses"][0]
+            verses = data.get("verses", [])
+            if verses:
+                verse = random.choice(verses)
                 return {
                     "reference": verse.get("reference", "Unknown"),
                     "text": verse.get("text", "Peace be with you."),
@@ -57,11 +60,25 @@ def get_scripture(theme: str):
     except Exception as e:
         print("YouVersion error:", e)
 
-    # fallback default
-    return {
-        "reference": "Philippians 4:6",
-        "text": "Do not be anxious about anything, but in every situation, by prayer and petition, with thanksgiving, present your requests to God."
-    }
+    fallback_verses = [
+        {
+            "reference": "Philippians 4:6",
+            "text": "Do not be anxious about anything, but in every situation, by prayer and petition, with thanksgiving, present your requests to God."
+        },
+        {
+            "reference": "Psalm 23:1",
+            "text": "The Lord is my shepherd, I lack nothing."
+        },
+        {
+            "reference": "Isaiah 41:10",
+            "text": "So do not fear, for I am with you; do not be dismayed, for I am your God."
+        },
+        {
+            "reference": "Matthew 11:28",
+            "text": "Come to me, all you who are weary and burdened, and I will give you rest."
+        },
+    ]
+    return random.choice(fallback_verses)
 
 
 @app.post("/analyze")

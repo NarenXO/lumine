@@ -33,6 +33,7 @@ dependencies:
   http: ^1.6.0
   speech_to_text: ^7.0.0
   permission_handler: ^11.3.1
+  fl_chart: ^0.68.0
   cupertino_icons: ^1.0.8
 
   # The "flutter_lints" package below contains a set of recommended lints to
