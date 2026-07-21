@@ -6,6 +6,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
+# Simple in-memory resonance store
+resonance_profile = {
+    "peace": 0,
+    "thankfulness": 0,
+    "patience": 0,
+    "hope": 0,
+    "rest": 0,
+    "community": 0,
+    "gratitude": 0,
+}
+
 load_dotenv()
 
 YOUVERSION_API_KEY = os.getenv("YOUVERSION_API_KEY")
@@ -93,6 +104,7 @@ async def analyze_message(data: MessageRequest):
         response_text = "Anger often hides deeper hurt. What is beneath it?"
 
     theme = EMOTION_THEME_MAP.get(emotion, "hope")
+    resonance_profile[theme] = resonance_profile.get(theme, 0) + 1
     scripture = get_scripture(theme)
 
     return {
@@ -122,10 +134,18 @@ async def analyze_habits(data: HabitsRequest):
     else:
         insight = "You are in a balanced rhythm. Keep walking in gratitude."
         theme = "gratitude"
-
+resonance_profile[theme] = resonance_profile.get(theme, 0) + 1
     scripture = get_scripture(theme)
 
     return {
         "insight": insight,
         "scripture": scripture,
+
+        @app.get("/resonance")
+async def get_resonance():
+    sorted_profile = dict(
+        sorted(resonance_profile.items(), key=lambda x: x[1], reverse=True)
+    )
+    return {"resonance": sorted_profile}
+    
     }
