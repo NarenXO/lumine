@@ -18,8 +18,9 @@ class _ChatScreenState extends State<ChatScreen> {
 
   void _sendMessage() async {
     if (_controller.text.isEmpty) return;
+    String userMessage = _controller.text.trim();
+_controller.clear();
 
-    String userMessage = _controller.text;
 
     setState(() {
       _messages.add({"role": "user", "text": userMessage});
@@ -162,9 +163,12 @@ if (mounted) {
 
     String finalText = "";
     bool alreadySent = false;
+    bool acceptUpdates = true;
 
     _voiceService.startListening((text) {
       if (!mounted) return;
+      if (!acceptUpdates) return;
+
       finalText = text;
       setState(() {
         _controller.text = text;
@@ -174,6 +178,7 @@ if (mounted) {
     _voiceService.onSilence(() async {
       if (alreadySent) return;
       alreadySent = true;
+      acceptUpdates = false;
 
       await _voiceService.stopListening();
       if (!mounted) return;
@@ -184,7 +189,7 @@ if (mounted) {
       _controller.text = captured;
       _sendMessage();
 
-      Future.delayed(const Duration(milliseconds: 300), () {
+      Future.delayed(const Duration(milliseconds: 400), () {
         if (!mounted) return;
         setState(() {
           _controller.clear();

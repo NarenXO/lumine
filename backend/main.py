@@ -82,6 +82,42 @@ def get_scripture(theme: str):
 
 
 @app.post("/analyze")
+
+class HabitsRequest(BaseModel):
+    sleep: float
+    stress: float
+    social: float
+    rest: float
+
+
+@app.post("/habits")
+
+async def analyze_habits(data: HabitsRequest):
+    insight = ""
+    theme = "hope"
+
+    if data.sleep < 5:
+        insight = "You are sleep-deprived. Rest restores the soul."
+        theme = "rest"
+    elif data.stress > 7:
+        insight = "You are under heavy stress. Peace is possible."
+        theme = "peace"
+    elif data.social < 3:
+        insight = "You may be isolating. Community is medicine."
+        theme = "community"
+    elif data.rest < 4:
+        insight = "You need deeper rest. Sabbath is sacred."
+        theme = "rest"
+    else:
+        insight = "You are in a balanced rhythm. Keep walking in gratitude."
+        theme = "gratitude"
+
+    scripture = get_scripture(theme)
+
+    return {
+        "insight": insight,
+        "scripture": scripture,
+    }
 async def analyze_message(data: MessageRequest):
     text = data.message.lower()
 
