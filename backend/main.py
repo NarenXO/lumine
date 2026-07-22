@@ -47,9 +47,44 @@ def get_gloo_token() -> str:
     return _gloo_token
 
 
+def get_gloo_token() -> str:
+    global _gloo_token, _gloo_token_expiry
+
+    if _gloo_token and time.time() < _gloo_token_expiry - 60:
+        return _gloo_token
+
+    auth = base64.b64encode(
+        f"{GLOO_CLIENT_ID}:{GLOO_CLIENT_SECRET}".encode()
+    ).decode()
+
+    try:
+        response = requests.post(
+            "https://platform.ai.gloo.com/oauth2/token",
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Authorization": f"Basic {auth}"
+            },
+            data={
+                "grant_type": "client_credentials",
+                "scope": "api/access"
+            },
+            timeout=10
+        )
+        response.raise_for_status()
+        data = response.json()
+        _gloo_token = data["access_token"]
+        _gloo_token_expiry = time.time() + data.get("expires_in", 3600)
+        return _gloo_token
+    except Exception as e:
+        print(f"CRITICAL: Gloo Auth Failed: {e}")
+        return ""
+
 def call_gloo(system_prompt: str, user_message: str) -> str:
     try:
         token = get_gloo_token()
+        if not token:
+            return ""
+
         response = requests.post(
             "https://platform.ai.gloo.com/ai/v1/responses",
             headers={
@@ -65,7 +100,7 @@ def call_gloo(system_prompt: str, user_message: str) -> str:
             },
             timeout=15
         )
-
+        
         if response.status_code == 200:
             output = response.json()["output"]
             message = next(
@@ -73,11 +108,12 @@ def call_gloo(system_prompt: str, user_message: str) -> str:
             )
             return message["content"][0]["text"]
         else:
-            print(f"Gloo error: {response.status_code} {response.text}")
+            # THIS IS THE IMPORTANT PART: We print the actual error from Gloo
+            print(f"GLOO API ERROR: {response.status_code} - {response.text}")
             return ""
 
     except Exception as e:
-        print(f"Gloo exception: {e}")
+        print(f"GLOO EXCEPTION: {e}")
         return ""
 
 # ─── App setup ───────────────────────────────────────
