@@ -50,40 +50,34 @@ def get_gloo_token() -> str:
 def call_gloo(system_prompt: str, user_message: str) -> str:
     try:
         token = get_gloo_token()
-        # We will try the two most common Gloo model names
-        models_to_try = ["gloo-openai-gpt-4o-mini", "gloo-openai-gpt-5-mini"]
-        
-        last_error = ""
-        for model_name in models_to_try:
-            response = requests.post(
-                "https://platform.ai.gloo.com/ai/v1/responses",
-                headers={
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {token}"
-                },
-                json={
-                    "model": model_name,
-                    "instructions": system_prompt,
-                    "input": [
-                        {"role": "user", "content": user_message}
-                    ]
-                },
-                timeout=15
+        response = requests.post(
+            "https://platform.ai.gloo.com/ai/v1/responses",
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {token}"
+            },
+            json={
+                "model": "gloo-anthropic-claude-haiku-4.5",
+                "instructions": system_prompt,
+                "input": [
+                    {"role": "user", "content": user_message}
+                ]
+            },
+            timeout=15
+        )
+
+        if response.status_code == 200:
+            output = response.json()["output"]
+            message = next(
+                item for item in output if item["type"] == "message"
             )
-            
-            if response.status_code == 200:
-                output = response.json()["output"]
-                message = next(
-                    item for item in output if item["type"] == "message"
-                )
-                return message["content"][0]["text"]
-            else:
-                last_error = f"Model {model_name} failed: {response.status_code} {response.text}"
-                print(last_error)
-                
-        return "" # If all models fail
+            return message["content"][0]["text"]
+        else:
+            print(f"Gloo error: {response.status_code} {response.text}")
+            return ""
+
     except Exception as e:
-        print(f"Gloo general error: {e}")
+        print(f"Gloo exception: {e}")
         return ""
 
 # ─── App setup ───────────────────────────────────────
