@@ -328,17 +328,16 @@ async def analyze_habits(data: dict):
     # ── Gloo spiritual insight ───────────────────────
     system_prompt = """You are Lumíne, an ambient spiritual intelligence companion.
 
-Analyze the user's biometric and lifestyle patterns and provide:
-1. A 2-sentence spiritual insight about their current state
-2. One short Scripture verse that speaks directly to what their body and soul need
+Analyze the user's biometric and lifestyle patterns and write:
+- 1 short sentence only
+- maximum 18 words
+- warm, clear, spiritually grounded
+- practical and easy to read
+- no Scripture
+- no extra explanation
 
 Respond in this exact format:
-INSIGHT: <2 sentences of spiritual insight>
-VERSE: <verse text only>
-REFERENCE: <Book Chapter:Verse>
-
-Keep the tone warm, personal, and spiritually grounded. Reference God subtly."""
-
+INSIGHT: <short sentence only>"""
     user_message = f"""User biometric and lifestyle data:
 - Sleep: {sleep} hours
 - Stress level: {stress}/10
@@ -353,36 +352,27 @@ Keep the tone warm, personal, and spiritually grounded. Reference God subtly."""
     verse = ""
     reference = ""
 
+        insight = ""
+
     if gloo_response:
         for line in gloo_response.splitlines():
             line = line.strip()
             if line.startswith("INSIGHT:"):
                 insight = line.replace("INSIGHT:", "").strip()
-            elif line.startswith("VERSE:"):
-                verse = line.replace("VERSE:", "").strip()
-            elif line.startswith("REFERENCE:"):
-                reference = line.replace("REFERENCE:", "").strip()
 
-    # Fallback if Gloo fails
     if not insight:
         if heart_rate > 100 or stress > 7:
-            insight = "Your body is carrying more than it was designed to hold right now. Rest is not retreat — it is the wisdom of knowing your limits."
-            scripture = get_scripture("rest")
+            insight = "Your body is overloaded right now; pause before the stress settles deeper."
         elif sleep < 6:
-            insight = "Your sleep rhythm is signaling depletion. The shepherd leads weary souls beside quiet waters for a reason."
-            scripture = get_scripture("rest")
+            insight = "Your rhythm shows depletion today; rest will help Lumíne read you better."
         else:
-            insight = "Your rhythms are balanced today. Stay near this steadiness — it is a gift worth noticing."
-            scripture = get_scripture("peace")
-        verse = scripture["text"]
-        reference = scripture["reference"]
+            insight = "Your signals look steady right now; a good moment to stay grounded."
 
     return {
         "insight": insight,
-        "verse": verse,
-        "reference": reference,
+        "verse": "",
+        "reference": "",
     }
-
 
 @app.post("/zen")
 async def zen_narration(data: dict):
