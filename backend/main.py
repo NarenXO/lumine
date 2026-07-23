@@ -352,7 +352,7 @@ INSIGHT: <short sentence only>"""
     verse = ""
     reference = ""
 
-        insight = ""
+    insight = ""
 
     if gloo_response:
         for line in gloo_response.splitlines():
@@ -379,17 +379,17 @@ async def zen_narration(data: dict):
     verse_text = data.get("verse", "Be still, and know that I am God.")
     verse_ref = data.get("ref", "Psalm 46:10")
     emotion = data.get("emotion", "calm")
+    
+    system_prompt = """You are Lumíne, a calm spiritual narrator.
 
-    system_prompt = """You are Lumíne, a calm and deeply spiritual narrator.
+Narrate the story behind a Scripture verse:
+- 3 sentences maximum
+- Who wrote it and why in one sentence
+- What it means for the listener now in one sentence
+- End with one sentence of direct comfort
+- Warm and intimate, not preachy
+- Total length under 50 words"""
 
-Your task is to narrate the story and meaning behind a Scripture verse in a way that:
-- Feels like a warm, intimate spiritual companion speaking
-- Tells who wrote it and what was happening in their life
-- Connects the ancient moment to the user's present emotional state
-- Speaks gently, slowly, with pauses built into the text
-- Is 4-6 sentences maximum
-- Does NOT sound like a sermon or lecture
-- Ends with a single sentence of direct comfort to the listener"""
 
     user_message = f"""Verse: "{verse_text}" — {verse_ref}
 User's current emotional state: {emotion}
