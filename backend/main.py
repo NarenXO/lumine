@@ -503,6 +503,44 @@ Narrate the story and meaning of this verse for someone feeling {emotion} right 
 async def get_resonance():
     return {"profile": resonance_profile}
 
+@app.post("/journal")
+async def generate_journal(data: dict):
+    emotions = data.get("emotions", [])
+    interruptions = data.get("interruptions", 0)
+    spikes = data.get("spikes", 0)
+
+    if not emotions:
+        return {"journal": "Lumíne is still learning your rhythms. Interact more and your journal will begin to write itself."}
+
+    emotion_summary = ", ".join([f'{e["emotion"]} at {e["hour"]}:00' for e in emotions[-10:]])
+
+    system_prompt = """You are Lumíne, writing a short personal journal entry for someone's day.
+
+RULES:
+- Write 2-3 sentences ONLY
+- Speak in third person about the user: "You started..."
+- Be warm but precise
+- Reference specific emotions and times
+- If there were sacred interruptions, mention them naturally
+- Do NOT use scripture
+- Do NOT be preachy
+- Sound like a caring companion summarizing their day
+- Make it feel like someone who was quietly watching over them all day"""
+
+    user_message = f"""Today's emotional data:
+{emotion_summary}
+
+Sacred interruptions today: {interruptions}
+Stress spikes today: {spikes}
+
+Write a short journal entry for this person's day."""
+
+    journal = call_gloo(system_prompt, user_message)
+
+    if not journal:
+        journal = "You moved through today carrying more than most people saw. Lumíne was with you through each moment."
+
+    return {"journal": journal}
 
 @app.post("/resonance")
 async def update_resonance(data: dict):
