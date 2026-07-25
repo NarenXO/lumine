@@ -542,6 +542,54 @@ Write a short journal entry for this person's day."""
 
     return {"journal": journal}
 
+@app.post("/soulmap")
+async def generate_soul_map(data: dict):
+    top_emotion = data.get("top_emotion", "calm")
+    anchor_verse = data.get("anchor_verse", "")
+    anchor_count = data.get("anchor_count", 0)
+    recovery_minutes = data.get("recovery_minutes", 0)
+    stress_spikes = data.get("stress_spikes", 0)
+    pattern = data.get("pattern", {})
+    interruptions = data.get("interruptions", 0)
+    days_active = data.get("days_active", 1)
+
+    system_prompt = """You are Lumíne, writing a deeply personal spiritual fingerprint for someone.
+
+RULES:
+- Write 3-4 sentences ONLY
+- Speak directly to the person as "you"
+- Reference their specific data naturally
+- Be warm, precise, and spiritually grounded
+- Subtle scripture woven in — not quoted directly
+- Sound like someone who has been quietly watching over them
+- NOT generic — every word should feel specific to this person
+- Do not mention numbers directly — translate them into meaning
+- No preachy language
+- No "God bless you" type endings
+- End with one observation that feels quietly profound"""
+
+    user_message = f"""This person's spiritual data:
+- Most frequent emotional state: {top_emotion}
+- Verse that keeps finding them: {anchor_verse} (found them {anchor_count} times)
+- Average time to return to calm after stress: {recovery_minutes} minutes
+- Stress spikes today: {stress_spikes}
+- Morning emotional tendency: {pattern.get("Morning", "calm")}
+- Afternoon emotional tendency: {pattern.get("Afternoon", "calm")}
+- Evening emotional tendency: {pattern.get("Evening", "calm")}
+- Night emotional tendency: {pattern.get("Night", "calm")}
+- Times Lumíne has intervened: {interruptions}
+- Days walking with Lumíne: {days_active}
+
+Write their spiritual fingerprint."""
+
+    fingerprint = call_gloo(system_prompt, user_message)
+
+    if not fingerprint:
+        fingerprint = f"You carry {top_emotion} most often, and yet you keep returning to stillness. Lumíne has noticed this quiet resilience in you — the way you move through difficulty without losing your way entirely."
+
+    return {"fingerprint": fingerprint}
+
+
 @app.post("/resonance")
 async def update_resonance(data: dict):
     themes = data.get("themes", [])
