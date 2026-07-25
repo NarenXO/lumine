@@ -552,8 +552,9 @@ async def generate_soul_map(data: dict):
     pattern = data.get("pattern", {})
     interruptions = data.get("interruptions", 0)
     days_active = data.get("days_active", 1)
-
-        system_prompt = """You are Lumíne, writing a spiritual fingerprint for someone.
+    recent_emotions = data.get("recent_emotions", [])
+    
+    system_prompt = """You are Lumíne, writing a spiritual fingerprint for someone.
 
 STRICT RULES:
 - Write EXACTLY 2 sentences. Never more.
