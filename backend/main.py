@@ -18,34 +18,6 @@ GLOO_CLIENT_SECRET = os.getenv("GLOO_CLIENT_SECRET")
 _gloo_token = None
 _gloo_token_expiry = 0
 
-def get_gloo_token() -> str:
-    global _gloo_token, _gloo_token_expiry
-
-    if _gloo_token and time.time() < _gloo_token_expiry - 60:
-        return _gloo_token
-
-    auth = base64.b64encode(
-        f"{GLOO_CLIENT_ID}:{GLOO_CLIENT_SECRET}".encode()
-    ).decode()
-
-    response = requests.post(
-        "https://platform.ai.gloo.com/oauth2/token",
-        headers={
-            "Content-Type": "application/x-www-form-urlencoded",
-            "Authorization": f"Basic {auth}"
-        },
-        data={
-            "grant_type": "client_credentials",
-            "scope": "api/access"
-        },
-        timeout=10
-    )
-
-    data = response.json()
-    _gloo_token = data["access_token"]
-    _gloo_token_expiry = time.time() + data.get("expires_in", 3600)
-    return _gloo_token
-
 
 def get_gloo_token() -> str:
     global _gloo_token, _gloo_token_expiry
@@ -79,6 +51,7 @@ def get_gloo_token() -> str:
         print(f"CRITICAL: Gloo Auth Failed: {e}")
         return ""
 
+
 def call_gloo(system_prompt: str, user_message: str) -> str:
     try:
         token = get_gloo_token()
@@ -100,7 +73,7 @@ def call_gloo(system_prompt: str, user_message: str) -> str:
             },
             timeout=15
         )
-        
+
         if response.status_code == 200:
             output = response.json()["output"]
             message = next(
@@ -108,13 +81,13 @@ def call_gloo(system_prompt: str, user_message: str) -> str:
             )
             return message["content"][0]["text"]
         else:
-            # THIS IS THE IMPORTANT PART: We print the actual error from Gloo
             print(f"GLOO API ERROR: {response.status_code} - {response.text}")
             return ""
 
     except Exception as e:
         print(f"GLOO EXCEPTION: {e}")
         return ""
+
 
 # ─── App setup ───────────────────────────────────────
 app = FastAPI()
@@ -202,6 +175,81 @@ EMOTION_THEME_MAP = {
 }
 
 
+# ─── Zen Verse Bank ───────────────────────────────────
+ZEN_VERSE_BANK = {
+    "peace": [
+        {"ref": "Isaiah 26:3", "text": "You will keep in perfect peace those whose minds are steadfast, because they trust in you."},
+        {"ref": "John 14:27", "text": "Peace I leave with you; my peace I give you. Not as the world gives do I give to you."},
+        {"ref": "Philippians 4:7", "text": "The peace of God, which transcends all understanding, will guard your hearts and your minds."},
+        {"ref": "Psalm 29:11", "text": "The Lord gives strength to his people; the Lord blesses his people with peace."},
+        {"ref": "Colossians 3:15", "text": "Let the peace of Christ rule in your hearts, since as members of one body you were called to peace."},
+        {"ref": "Numbers 6:26", "text": "The Lord turn his face toward you and give you peace."},
+        {"ref": "Romans 8:6", "text": "The mind governed by the Spirit is life and peace."},
+        {"ref": "Psalm 4:8", "text": "In peace I will lie down and sleep, for you alone, Lord, make me dwell in safety."},
+        {"ref": "Isaiah 32:17", "text": "The fruit of that righteousness will be peace; its effect will be quietness and confidence forever."},
+        {"ref": "2 Thessalonians 3:16", "text": "Now may the Lord of peace himself give you peace at all times and in every way."},
+        {"ref": "Psalm 46:10", "text": "Be still, and know that I am God."},
+        {"ref": "Romans 5:1", "text": "Since we have been justified through faith, we have peace with God through our Lord Jesus Christ."},
+    ],
+    "hope": [
+        {"ref": "Jeremiah 29:11", "text": "For I know the plans I have for you, declares the Lord, plans to prosper you and not to harm you."},
+        {"ref": "Romans 15:13", "text": "May the God of hope fill you with all joy and peace as you trust in him."},
+        {"ref": "Isaiah 40:31", "text": "Those who hope in the Lord will renew their strength. They will soar on wings like eagles."},
+        {"ref": "Psalm 39:7", "text": "But now, Lord, what do I look for? My hope is in you."},
+        {"ref": "Romans 5:5", "text": "And hope does not put us to shame, because God's love has been poured out into our hearts."},
+        {"ref": "Lamentations 3:24", "text": "The Lord is my portion; therefore I will wait for him."},
+        {"ref": "Psalm 130:5", "text": "I wait for the Lord, my whole being waits, and in his word I put my hope."},
+        {"ref": "Hebrews 11:1", "text": "Now faith is confidence in what we hope for and assurance about what we do not see."},
+        {"ref": "Psalm 62:5", "text": "Yes, my soul, find rest in God; my hope comes from him."},
+        {"ref": "1 Peter 1:3", "text": "In his great mercy he has given us new birth into a living hope."},
+        {"ref": "Romans 8:28", "text": "And we know that in all things God works for the good of those who love him."},
+        {"ref": "Psalm 31:24", "text": "Be strong and take heart, all you who hope in the Lord."},
+    ],
+    "rest": [
+        {"ref": "Matthew 11:28", "text": "Come to me, all you who are weary and burdened, and I will give you rest."},
+        {"ref": "Psalm 23:2", "text": "He makes me lie down in green pastures, he leads me beside quiet waters, he refreshes my soul."},
+        {"ref": "Psalm 46:10", "text": "Be still, and know that I am God."},
+        {"ref": "Exodus 33:14", "text": "My Presence will go with you, and I will give you rest."},
+        {"ref": "Psalm 127:2", "text": "He grants sleep to those he loves."},
+        {"ref": "Mark 6:31", "text": "Come with me by yourselves to a quiet place and get some rest."},
+        {"ref": "Isaiah 30:15", "text": "In repentance and rest is your salvation, in quietness and trust is your strength."},
+        {"ref": "Hebrews 4:9", "text": "There remains, then, a Sabbath-rest for the people of God."},
+        {"ref": "Psalm 116:7", "text": "Return to your rest, my soul, for the Lord has been good to you."},
+        {"ref": "Matthew 11:29", "text": "Take my yoke upon you and learn from me, for I am gentle and humble in heart, and you will find rest."},
+        {"ref": "Psalm 62:1", "text": "Truly my soul finds rest in God; my salvation comes from him."},
+        {"ref": "Isaiah 40:29", "text": "He gives strength to the weary and increases the power of the weak."},
+    ],
+    "gratitude": [
+        {"ref": "Psalm 136:1", "text": "Give thanks to the Lord, for he is good. His love endures forever."},
+        {"ref": "1 Thessalonians 5:18", "text": "Give thanks in all circumstances; for this is God's will for you in Christ Jesus."},
+        {"ref": "James 1:17", "text": "Every good and perfect gift is from above, coming down from the Father of the heavenly lights."},
+        {"ref": "Colossians 3:17", "text": "And whatever you do, whether in word or deed, do it all in the name of the Lord Jesus, giving thanks."},
+        {"ref": "Psalm 100:4", "text": "Enter his gates with thanksgiving and his courts with praise; give thanks to him and praise his name."},
+        {"ref": "Psalm 107:1", "text": "Give thanks to the Lord, for he is good; his love endures forever."},
+        {"ref": "Ephesians 5:20", "text": "Always giving thanks to God the Father for everything, in the name of our Lord Jesus Christ."},
+        {"ref": "Philippians 4:6", "text": "In every situation, by prayer and petition, with thanksgiving, present your requests to God."},
+        {"ref": "Psalm 9:1", "text": "I will give thanks to you, Lord, with all my heart; I will tell of all your wonderful deeds."},
+        {"ref": "2 Corinthians 9:15", "text": "Thanks be to God for his indescribable gift."},
+        {"ref": "Psalm 28:7", "text": "The Lord is my strength and my shield; my heart trusts in him, and he helps me."},
+        {"ref": "Colossians 2:7", "text": "Rooted and built up in him, strengthened in the faith as you were taught, and overflowing with thankfulness."},
+    ],
+    "strength": [
+        {"ref": "Philippians 4:13", "text": "I can do all this through him who gives me strength."},
+        {"ref": "Isaiah 41:10", "text": "So do not fear, for I am with you; do not be dismayed, for I am your God. I will strengthen you."},
+        {"ref": "Psalm 46:1", "text": "God is our refuge and strength, an ever-present help in trouble."},
+        {"ref": "Isaiah 40:29", "text": "He gives strength to the weary and increases the power of the weak."},
+        {"ref": "2 Corinthians 12:9", "text": "My grace is sufficient for you, for my power is made perfect in weakness."},
+        {"ref": "Ephesians 6:10", "text": "Be strong in the Lord and in his mighty power."},
+        {"ref": "Psalm 18:32", "text": "It is God who arms me with strength and keeps my way secure."},
+        {"ref": "Nehemiah 8:10", "text": "The joy of the Lord is your strength."},
+        {"ref": "Joshua 1:9", "text": "Be strong and courageous. Do not be afraid; do not be discouraged, for the Lord your God will be with you."},
+        {"ref": "Psalm 28:7", "text": "The Lord is my strength and my shield; my heart trusts in him, and he helps me."},
+        {"ref": "Isaiah 12:2", "text": "Surely God is my salvation; I will trust and not be afraid."},
+        {"ref": "Psalm 18:1", "text": "I love you, Lord, my strength."},
+    ],
+}
+
+
 def get_scripture(theme: str) -> dict:
     try:
         if YOUVERSION_API_KEY:
@@ -241,7 +289,6 @@ async def root():
 async def analyze_message(data: MessageRequest):
     text = data.text
 
-    # ── Gloo emotion + response ──────────────────────
     system_prompt = """You are Lumíne — a deeply empathetic spiritual companion who thinks and responds like a world-class psychiatrist and therapist.
 
 WHO YOU ARE:
@@ -328,13 +375,7 @@ GOOD: "Not good enough for what — or for whom? That matters a lot."
 SCRIPTURE RULE:
 - Only use scripture if it is the single most precise, human thing that could be said
 - Never quote it formally — weave it in as natural language
-- Example: instead of "Psalm 46:10 says Be still" say "sometimes the only move left is stillness"
 - If in doubt, leave it out entirely
-
-CONVERSATION MEMORY:
-- If the user has shared something earlier in the conversation, reference it
-- Build on what they have said — do not start fresh each time
-- Show that you have been listening to the whole conversation
 
 FINAL RULE:
 Every response must feel like it came from a human being who genuinely cares and is genuinely paying attention.
@@ -366,7 +407,6 @@ RESPONSE: <your response — specific, human, short, real>"""
             elif line.startswith("RESPONSE:"):
                 lumine_response = line.replace("RESPONSE:", "").strip()
     else:
-        # Fallback local detection
         text_lower = text.lower()
         if any(w in text_lower for w in ["anxious", "anxiety", "worried", "nervous", "panic"]):
             emotion = "anxious"
@@ -393,10 +433,7 @@ RESPONSE: <your response — specific, human, short, real>"""
             theme = "gratitude"
             lumine_response = "There is a brightness in you right now, and it has God's fingerprints all over it. Don't hide it — light was made to be shared."
 
-    # Update resonance
     resonance_profile[theme] = resonance_profile.get(theme, 0) + 1
-
-    # Get scripture
     scripture = get_scripture(theme)
 
     return {
@@ -416,7 +453,6 @@ async def analyze_habits(data: dict):
     heart_rate = data.get("heart_rate", 72)
     activity_level = data.get("activity_level", 0.3)
 
-    # ── Gloo spiritual insight ───────────────────────
     system_prompt = """You are Lumíne, an ambient spiritual intelligence companion.
 
 Analyze the user's biometric and lifestyle patterns and write:
@@ -429,6 +465,7 @@ Analyze the user's biometric and lifestyle patterns and write:
 
 Respond in this exact format:
 INSIGHT: <short sentence only>"""
+
     user_message = f"""User biometric and lifestyle data:
 - Sleep: {sleep} hours
 - Stress level: {stress}/10
@@ -438,10 +475,6 @@ INSIGHT: <short sentence only>"""
 - Activity level: {round(activity_level * 100)}%"""
 
     gloo_response = call_gloo(system_prompt, user_message)
-
-    insight = ""
-    verse = ""
-    reference = ""
 
     insight = ""
 
@@ -465,32 +498,58 @@ INSIGHT: <short sentence only>"""
         "reference": "",
     }
 
+
 @app.post("/zen")
 async def zen_narration(data: dict):
-    verse_text = data.get("verse", "Be still, and know that I am God.")
-    verse_ref = data.get("ref", "Psalm 46:10")
+    theme = data.get("theme", "peace")
     emotion = data.get("emotion", "calm")
-    
+    seed = data.get("seed", "stillness")
+    used_refs = data.get("used_refs", [])
+
+    # Pick verse from bank avoiding already-used ones
+    verse_list = ZEN_VERSE_BANK.get(theme, ZEN_VERSE_BANK["peace"])
+    available = [v for v in verse_list if v["ref"] not in used_refs]
+    if not available:
+        available = verse_list  # reset if all used
+
+    verse = random.choice(available)
+    verse_text = verse["text"]
+    verse_ref = verse["ref"]
+
     system_prompt = """You are Lumíne, a calm spiritual narrator.
 
-Narrate the story behind a Scripture verse:
-- 3 sentences maximum
-- Who wrote it and why in one sentence
-- What it means for the listener now in one sentence
-- End with one sentence of direct comfort
-- Warm and intimate, not preachy
-- Total length under 50 words"""
+Your job is to write a short narration ABOUT a Scripture verse — not to repeat it.
 
+STRICT RULES:
+- Do NOT quote the verse text or repeat any of its words
+- Do NOT say the verse reference, book name, or chapter number
+- Write exactly 2 sentences
+- First sentence: the human story or moment behind when this was written
+- Second sentence: one quiet word of comfort for someone feeling this emotion right now
+- Warm, intimate, under 35 words total
+- No preaching. No religion-speak. No filler."""
 
-    user_message = f"""Verse: "{verse_text}" — {verse_ref}
-User's current emotional state: {emotion}
+    user_message = f"""The verse is: "{verse_text}"
+The person is feeling: {emotion}
+The session theme is: {theme}
+Seed word for variety: {seed}
 
-Narrate the story and meaning of this verse for someone feeling {emotion} right now."""
+Write the narration now. Do not repeat the verse. Do not name the book or reference."""
 
     narration = call_gloo(system_prompt, user_message)
 
     if not narration:
-        narration = f"{verse_text} ... This was written in a moment of real human struggle. And it was preserved across centuries so it could find you here, in this exact moment. You are not alone in what you are carrying right now."
+        narration_map = {
+            "peace": "This came from a moment of real storm — when someone had nothing left but trust. That same stillness is available to you right now.",
+            "hope": "This was written in a season of waiting, when the future felt completely sealed. Something in you already knows what it means to keep going anyway.",
+            "rest": "These words came from exhaustion — the kind that goes deeper than sleep. You are allowed to stop carrying this for a moment.",
+            "gratitude": "This was a moment of sudden clarity — when ordinary things looked like gifts. Something good is already present with you, even now.",
+            "strength": "This was written at the edge of what felt possible. The same source that held them then is holding you in this exact moment.",
+        }
+        narration = narration_map.get(
+            theme,
+            "This was written for someone who needed it exactly as much as you do right now. You are not alone in this."
+        )
 
     return {
         "verse": verse_text,
@@ -499,10 +558,6 @@ Narrate the story and meaning of this verse for someone feeling {emotion} right 
     }
 
 
-@app.get("/resonance")
-async def get_resonance():
-    return {"profile": resonance_profile}
-
 @app.post("/journal")
 async def generate_journal(data: dict):
     emotions = data.get("emotions", [])
@@ -510,15 +565,19 @@ async def generate_journal(data: dict):
     spikes = data.get("spikes", 0)
 
     if not emotions:
-        return {"journal": "Lumíne is still learning your rhythms. Interact more and your journal will begin to write itself."}
+        return {
+            "journal": "Lumíne is still learning your rhythms. Interact more and your journal will begin to write itself."
+        }
 
-    emotion_summary = ", ".join([f'{e["emotion"]} at {e["hour"]}:00' for e in emotions[-10:]])
+    emotion_summary = ", ".join(
+        [f'{e["emotion"]} at {e["hour"]}:00' for e in emotions[-10:]]
+    )
 
     system_prompt = """You are Lumíne, writing a short personal journal entry for someone's day.
 
 RULES:
 - Write 2-3 sentences ONLY
-- Speak in third person about the user: "You started..."
+- Speak directly to the user: "You started..."
 - Be warm but precise
 - Reference specific emotions and times
 - If there were sacred interruptions, mention them naturally
@@ -542,6 +601,7 @@ Write a short journal entry for this person's day."""
 
     return {"journal": journal}
 
+
 @app.post("/soulmap")
 async def generate_soul_map(data: dict):
     top_emotion = data.get("top_emotion", "calm")
@@ -553,7 +613,7 @@ async def generate_soul_map(data: dict):
     interruptions = data.get("interruptions", 0)
     days_active = data.get("days_active", 1)
     recent_emotions = data.get("recent_emotions", [])
-    
+
     system_prompt = """You are Lumíne, writing a spiritual fingerprint for someone.
 
 STRICT RULES:
@@ -580,15 +640,21 @@ STRICT RULES:
 - Night emotional tendency: {pattern.get("Night", "calm")}
 - Times Lumíne has intervened: {interruptions}
 - Days walking with Lumíne: {days_active}
+- Recent emotional journey: {", ".join(recent_emotions[-8:]) if recent_emotions else "just beginning"}
 
 Write their spiritual fingerprint."""
 
     fingerprint = call_gloo(system_prompt, user_message)
 
     if not fingerprint:
-        fingerprint = f"You carry {top_emotion} most often, and yet you keep returning to stillness. Lumíne has noticed this quiet resilience in you — the way you move through difficulty without losing your way entirely."
+        fingerprint = f"You carry {top_emotion} most often, and yet you keep returning to stillness. Lumíne has noticed this quiet resilience in you."
 
     return {"fingerprint": fingerprint}
+
+
+@app.get("/resonance")
+async def get_resonance():
+    return {"profile": resonance_profile}
 
 
 @app.post("/resonance")
