@@ -19,18 +19,21 @@ class VoiceService {
     if (_isInitialized) return true;
 
     _isInitialized = await _speech.initialize(
-      onError: (error) => print('Voice Error: $error'),
+      onError: (error) {
+        print('Voice Error: $error');
+        _isListening = false;
+      },
       onStatus: (status) {
-  print('Voice Status: $status');
-  if (status == "done" || status == "notListening") {
-    _isListening = false;
-    if (_onSilenceCallback != null) {
-      final cb = _onSilenceCallback;
-      _onSilenceCallback = null; // fire only once
-      cb!();
-    }
-  }
-},
+        print('Voice Status: $status');
+        if (status == "done" || status == "notListening") {
+          _isListening = false;
+          if (_onSilenceCallback != null) {
+            final cb = _onSilenceCallback;
+            _onSilenceCallback = null;
+            cb!();
+          }
+        }
+      },
     );
 
     return _isInitialized;
@@ -42,9 +45,11 @@ class VoiceService {
       if (!ok) return;
     }
 
+    // Clean stop before restart
     if (_isListening) {
       await _speech.stop();
       _isListening = false;
+      await Future.delayed(const Duration(milliseconds: 100));
     }
 
     _isListening = true;
@@ -56,8 +61,8 @@ class VoiceService {
       listenMode: ListenMode.dictation,
       partialResults: true,
       cancelOnError: true,
-      pauseFor: const Duration(seconds: 2),
-      listenFor: const Duration(seconds: 15),
+      pauseFor: const Duration(seconds: 3),
+      listenFor: const Duration(seconds: 30),
     );
   }
 
@@ -67,7 +72,10 @@ class VoiceService {
 
   Future<void> stopListening() async {
     _isListening = false;
-    await _speech.stop();
+    _onSilenceCallback = null;
+    try {
+      await _speech.stop();
+    } catch (_) {}
   }
 
   bool get isListening => _isListening;

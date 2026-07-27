@@ -14,12 +14,51 @@ class AppController extends ChangeNotifier {
   double reactivity = 0.0;
   double humility = 0.0;
 
-  void updateEmotion(String emotion) {
-    if (emotion == "anxiety") anxiety += 0.1;
-    if (emotion == "gratitude") gratitude += 0.1;
-    if (emotion == "anger") reactivity += 0.1;
-    if (emotion == "pride") humility -= 0.1;
+  bool keyboardActive = false;
 
+  String currentEmotion = "calm";
+
+  void updateEmotion(String emotion) {
+    final e = emotion.toLowerCase().trim();
+
+    // Normalize all possible backend values
+    if (e == "anxiety" || e == "anxious") {
+      anxiety += 0.1;
+      currentEmotion = "anxious";
+    } else if (e == "gratitude" || e == "grateful") {
+      gratitude += 0.1;
+      currentEmotion = "grateful";
+    } else if (e == "anger" || e == "angry") {
+      reactivity += 0.1;
+      currentEmotion = "angry";
+    } else if (e == "sadness" || e == "sad") {
+      currentEmotion = "sad";
+    } else if (e == "joy" || e == "happy") {
+      currentEmotion = "happy";
+    } else if (e == "stress" || e == "stressed") {
+      anxiety += 0.05;
+      currentEmotion = "stressed";
+    } else if (e == "hopeful") {
+      currentEmotion = "hopeful";
+    } else if (e == "optimistic") {
+      currentEmotion = "optimistic";
+    } else if (e == "depressed") {
+      currentEmotion = "depressed";
+    } else if (e == "calm" || e == "neutral") {
+      currentEmotion = "calm";
+    }
+
+    notifyListeners();
+  }
+
+  void setEmotion(String emotion) {
+    currentEmotion = emotion.toLowerCase().trim();
+    notifyListeners();
+  }
+
+  void setKeyboardActive(bool active) {
+    if (keyboardActive == active) return;
+    keyboardActive = active;
     notifyListeners();
   }
 }
