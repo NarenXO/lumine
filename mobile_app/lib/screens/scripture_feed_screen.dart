@@ -334,6 +334,7 @@ class _ScriptureFeedScreenState extends State<ScriptureFeedScreen>
 
                     const SizedBox(height: 30),
 
+                    // Car Mode — highlighted pill
                     GestureDetector(
                       onTap: () => Navigator.push(
                         context,
@@ -341,30 +342,56 @@ class _ScriptureFeedScreenState extends State<ScriptureFeedScreen>
                           builder: (_) => const CarModeScreen(),
                         ),
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.directions_car_rounded,
-                            size: 18,
-                            color: Colors.white.withOpacity(0.75),
-                          )
-                              .animate(onPlay: (c) => c.repeat())
-                              .shimmer(duration: 2400.ms),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Switch to Car Mode',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 14,
-                              color: Colors.white.withOpacity(0.75),
-                              fontWeight: FontWeight.w500,
-                              decoration: TextDecoration.underline,
-                              decorationColor: Colors.white.withOpacity(0.4),
-                            ),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 22, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.25),
+                          borderRadius: BorderRadius.circular(30),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.6),
+                            width: 1.5,
                           ),
-                        ],
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.white.withOpacity(0.2),
+                              blurRadius: 20,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.directions_car_rounded,
+                              size: 20,
+                              color: Colors.white,
+                            )
+                                .animate(onPlay: (c) => c.repeat())
+                                .shimmer(
+                                    duration: 2000.ms, color: Colors.white),
+                            const SizedBox(width: 10),
+                            Text(
+                              'Switch to Car Mode',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 15,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.4,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
+                    )
+                        .animate(onPlay: (c) => c.repeat(reverse: true))
+                        .scale(
+                          begin: const Offset(1.0, 1.0),
+                          end: const Offset(1.05, 1.05),
+                          duration: 1800.ms,
+                        ),
 
                     const SizedBox(height: 120),
                   ],
@@ -488,7 +515,9 @@ class _ZenSessionPageState extends State<_ZenSessionPage>
   late AnimationController _heartBurstController;
   Timer? _sessionTimer;
 
-  static const double _swipeThreshold = 100;
+  // Lower threshold + velocity detection = super responsive swipe
+  static const double _swipeThreshold = 60;
+  static const double _swipeVelocityThreshold = 300;
 
   @override
   void initState() {
@@ -532,7 +561,8 @@ class _ZenSessionPageState extends State<_ZenSessionPage>
         theme: widget.theme.toLowerCase(),
         emotion: AppController().currentEmotion,
       );
-      _nextVerseText = result['verse'] ?? 'The Lord is my shepherd, I lack nothing.';
+      _nextVerseText =
+          result['verse'] ?? 'The Lord is my shepherd, I lack nothing.';
       _nextVerseRef = result['ref'] ?? 'Psalm 23:1';
     } catch (e) {
       _nextVerseText = 'The Lord is my shepherd, I lack nothing.';
@@ -615,7 +645,8 @@ class _ZenSessionPageState extends State<_ZenSessionPage>
       if (_dragOffset > _swipeThreshold) {
         _dragOffset = _swipeThreshold + (_dragOffset - _swipeThreshold) * 0.25;
       } else if (_dragOffset < -_swipeThreshold) {
-        _dragOffset = -_swipeThreshold + (_dragOffset + _swipeThreshold) * 0.25;
+        _dragOffset =
+            -_swipeThreshold + (_dragOffset + _swipeThreshold) * 0.25;
       }
     });
   }
@@ -623,11 +654,18 @@ class _ZenSessionPageState extends State<_ZenSessionPage>
   void _onDragEnd(DragEndDetails details) async {
     if (_actionTriggered) return;
 
-    if (_dragOffset > _swipeThreshold * 0.75) {
+    final velocity = details.primaryVelocity ?? 0;
+
+    final isFlickRight = velocity > _swipeVelocityThreshold;
+    final isFlickLeft = velocity < -_swipeVelocityThreshold;
+    final isDraggedRight = _dragOffset > _swipeThreshold;
+    final isDraggedLeft = _dragOffset < -_swipeThreshold;
+
+    if (isFlickRight || isDraggedRight) {
       setState(() => _actionTriggered = true);
       await _animateSwipeOut(toRight: true);
       await _saveAndNext();
-    } else if (_dragOffset < -_swipeThreshold * 0.75) {
+    } else if (isFlickLeft || isDraggedLeft) {
       setState(() => _actionTriggered = true);
       await _animateSwipeOut(toRight: false);
       await _loadVerse();
@@ -648,7 +686,8 @@ class _ZenSessionPageState extends State<_ZenSessionPage>
       final elapsed = DateTime.now().difference(startTime).inMilliseconds;
       final t = (elapsed / duration.inMilliseconds).clamp(0.0, 1.0);
       final curve = Curves.easeOut.transform(t);
-      setState(() => _dragOffset = startOffset + (target - startOffset) * curve);
+      setState(() =>
+          _dragOffset = startOffset + (target - startOffset) * curve);
       if (t >= 1.0) return false;
       await Future.delayed(const Duration(milliseconds: 16));
       return true;
@@ -717,7 +756,8 @@ class _ZenSessionPageState extends State<_ZenSessionPage>
               value: progress,
               minHeight: 3,
               backgroundColor: Colors.white.withOpacity(0.2),
-              valueColor: AlwaysStoppedAnimation(Colors.white.withOpacity(0.85)),
+              valueColor:
+                  AlwaysStoppedAnimation(Colors.white.withOpacity(0.85)),
             ),
           ),
 
@@ -725,7 +765,8 @@ class _ZenSessionPageState extends State<_ZenSessionPage>
             child: Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 28, vertical: 16),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -825,7 +866,8 @@ class _ZenSessionPageState extends State<_ZenSessionPage>
                               child: Opacity(
                                 opacity: cardOpacity,
                                 child: Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 32),
                                   child: Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
@@ -833,56 +875,133 @@ class _ZenSessionPageState extends State<_ZenSessionPage>
 
                                       const SizedBox(height: 32),
 
-                                      if (_verseFullyRevealed && _verseRef.isNotEmpty)
+                                      if (_verseFullyRevealed &&
+                                          _verseRef.isNotEmpty)
                                         Text(
                                           '— $_verseRef',
                                           style: GoogleFonts.plusJakartaSans(
                                             fontSize: 13,
-                                            color: Colors.white.withOpacity(0.65),
+                                            color:
+                                                Colors.white.withOpacity(0.65),
                                             fontWeight: FontWeight.w500,
                                             fontStyle: FontStyle.italic,
                                           ),
-                                        ).animate().fadeIn(duration: 600.ms),
+                                        )
+                                            .animate()
+                                            .fadeIn(duration: 600.ms),
 
                                       const SizedBox(height: 48),
 
                                       if (_verseFullyRevealed)
                                         Row(
-                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
                                           children: [
                                             Icon(
                                               Icons.favorite_rounded,
                                               size: 14,
-                                              color: Colors.white.withOpacity(0.6),
+                                              color: Colors.white
+                                                  .withOpacity(0.6),
                                             ),
                                             const SizedBox(width: 6),
                                             Text(
                                               '$_resonanceCount souls resonating',
-                                              style: GoogleFonts.plusJakartaSans(
+                                              style:
+                                                  GoogleFonts.plusJakartaSans(
                                                 fontSize: 12,
-                                                color: Colors.white.withOpacity(0.6),
+                                                color: Colors.white
+                                                    .withOpacity(0.6),
                                                 fontWeight: FontWeight.w500,
                                               ),
                                             ),
                                           ],
-                                        ).animate().fadeIn(duration: 800.ms),
+                                        )
+                                            .animate()
+                                            .fadeIn(duration: 800.ms),
 
                                       const SizedBox(height: 24),
 
+                                      // Highlighted swipe hint pill
                                       if (_verseFullyRevealed &&
                                           _dragOffset == 0 &&
                                           !_actionTriggered)
-                                        Text(
-                                          '← skip   save →',
-                                          style: GoogleFonts.plusJakartaSans(
-                                            fontSize: 11,
-                                            color: Colors.white.withOpacity(0.4),
-                                            letterSpacing: 1.5,
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 18,
+                                            vertical: 10,
                                           ),
-                                        ).animate().fadeIn(
-                                              delay: 1000.ms,
-                                              duration: 800.ms,
+                                          decoration: BoxDecoration(
+                                            color:
+                                                Colors.white.withOpacity(0.2),
+                                            borderRadius:
+                                                BorderRadius.circular(24),
+                                            border: Border.all(
+                                              color: Colors.white
+                                                  .withOpacity(0.4),
+                                              width: 1,
                                             ),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                Icons.arrow_back_rounded,
+                                                size: 14,
+                                                color: Colors.white
+                                                    .withOpacity(0.85),
+                                              ),
+                                              const SizedBox(width: 6),
+                                              Text(
+                                                'skip',
+                                                style: GoogleFonts
+                                                    .plusJakartaSans(
+                                                  fontSize: 12,
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.w700,
+                                                  letterSpacing: 1,
+                                                ),
+                                              ),
+                                              Container(
+                                                width: 1,
+                                                height: 12,
+                                                margin: const EdgeInsets
+                                                    .symmetric(
+                                                    horizontal: 12),
+                                                color: Colors.white
+                                                    .withOpacity(0.3),
+                                              ),
+                                              Text(
+                                                'save',
+                                                style: GoogleFonts
+                                                    .plusJakartaSans(
+                                                  fontSize: 12,
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.w700,
+                                                  letterSpacing: 1,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 6),
+                                              Icon(
+                                                Icons.arrow_forward_rounded,
+                                                size: 14,
+                                                color: Colors.white
+                                                    .withOpacity(0.85),
+                                              ),
+                                            ],
+                                          ),
+                                        )
+                                            .animate(
+                                                onPlay: (c) =>
+                                                    c.repeat(reverse: true))
+                                            .scale(
+                                              begin: const Offset(1.0, 1.0),
+                                              end: const Offset(1.06, 1.06),
+                                              duration: 1500.ms,
+                                            )
+                                            .animate()
+                                            .fadeIn(
+                                                delay: 800.ms,
+                                                duration: 600.ms),
                                     ],
                                   ),
                                 ),
@@ -898,10 +1017,12 @@ class _ZenSessionPageState extends State<_ZenSessionPage>
                             animation: _heartBurstController,
                             builder: (_, __) {
                               return Transform.scale(
-                                scale: 0.5 + _heartBurstController.value * 1.5,
+                                scale:
+                                    0.5 + _heartBurstController.value * 1.5,
                                 child: Opacity(
-                                  opacity: (1.0 - _heartBurstController.value)
-                                      .clamp(0.0, 1.0),
+                                  opacity:
+                                      (1.0 - _heartBurstController.value)
+                                          .clamp(0.0, 1.0),
                                   child: const Icon(
                                     Icons.favorite_rounded,
                                     color: Colors.white,
