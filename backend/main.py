@@ -488,6 +488,9 @@ Now write your 3 sentences following the strict rules. Remember:
 Write only the 3 sentences. Nothing else."""
 
     narration = call_gloo(system_prompt, user_message, temperature=0.95)
+    narration = call_gloo(system_prompt, user_message, temperature=0.95)
+    print(f"[/zen] Gloo returned: {narration!r}")
+    print(f"[/zen] Length: {len(narration.strip()) if narration else 0}")
 
     # Fallback varied narrations if Gloo fails — no more "This was written..."
     if not narration or len(narration.strip()) < 20:
