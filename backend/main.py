@@ -442,8 +442,6 @@ async def zen_narration(data: dict):
     verse_override = data.get("verse", "")
     ref_override = data.get("ref", "")
 
-    # If caller passed a specific verse (Car Mode does this), use it
-    # Otherwise pick from the bank
     if verse_override and ref_override:
         verse_text = verse_override
         verse_ref = ref_override
@@ -456,72 +454,71 @@ async def zen_narration(data: dict):
         verse_text = verse["text"]
         verse_ref = verse["ref"]
 
-    # ─── Deep narration prompt ─────────────────────────
-        system_prompt = """You are Lumíne, a spiritual narrator speaking to someone driving alone.
+    # Rotate narration angle — force variety
+    angles = [
+        "Start with a specific PLACE (a garden, a boat, a rooftop, a prison cell) — never with a person description.",
+        "Open with a QUESTION the reader is likely asking themselves right now.",
+        "Begin by describing a SOUND or a SILENCE from the original moment.",
+        "Start with a modern-day PARALLEL — an office, a hospital, a traffic jam, a 3am kitchen.",
+        "Open with a SINGLE WORD that captures the verse's emotion.",
+        "Start by naming what the reader is probably AVOIDING right now.",
+        "Begin with the WEATHER or TIME OF DAY of the moment behind the verse.",
+        "Open with a small, ORDINARY OBJECT the original person might have been holding.",
+    ]
+    chosen_angle = random.choice(angles)
 
-Your task: write a SHORT narration about a Bible verse that plays over ambient music in a car.
+    system_prompt = f"""You are Lumíne, a spiritual narrator speaking to someone driving alone.
+
+Your task: write a SHORT narration about a Bible verse that plays over ambient music.
 
 STRICT RULES — non-negotiable:
-- Write exactly 3 short sentences.
-- TOTAL length: MAXIMUM 40 words. Under 40 words. Not 41. Count them.
-- Sentences must be SHORT — no long clauses, no filler.
-- NEVER begin with "This was written for..." or "This was preserved..." or "This came from..." or "These words..." — those phrasings are BANNED.
-- NEVER quote or repeat the verse text itself.
-- NEVER say the verse reference, book name, or chapter.
-- Each sentence must do a distinct job:
-  1. First sentence: one concrete human moment/person behind the verse (short)
-  2. Second sentence: plain-language meaning for today (short)
-  3. Third sentence: direct personal word to the driver (short)
-- No poetry. No flowery language. Grounded, warm, precise.
-- Vary sentence openings. Never start two sentences the same way.
-- No filler ("truly," "indeed," "in essence," etc.)
-- Speak like a wise older friend — not a preacher."""
+- MAXIMUM 40 words TOTAL. Under 40. Count them.
+- Exactly 3 short sentences.
+- {chosen_angle}
+- BANNED opening phrases: "A man...", "Someone...", "In exile...", "This was written...", "This came from...", "These words...", "A tired..."
+- NEVER quote the verse text.
+- NEVER name the book, chapter, or reference.
+- Sentence 2: plain modern meaning.
+- Sentence 3: direct personal word to the driver ("you", "your").
+- No poetry, no flowery language, no filler ("truly", "indeed").
+- Speak like a wise older friend."""
 
-    user_message = f"""VERSE (do not quote or repeat this): "{verse_text}"
-CONTEXT for the driver: they are feeling {emotion}, session theme is {theme}, unique seed for variety: {seed}
+    user_message = f"""VERSE (do not quote): "{verse_text}"
+Emotion: {emotion}
+Theme: {theme}
+Seed: {seed}
 
-Now write your 3 sentences following the strict rules. Remember:
-- No opening with "This was written..." or "This came from..." — those are banned
-- Sentence 1: concrete moment/person behind the verse
-- Sentence 2: what it means today, in plain language
-- Sentence 3: speak directly to the driver, personally
-
-Write only the 3 sentences. Nothing else."""
+Write your 3 sentences following the angle above. Keep it under 40 words. Speak directly to the listener in sentence 3."""
 
     narration = call_gloo(system_prompt, user_message, temperature=0.95)
+    print(f"[/zen] Angle used: {chosen_angle[:50]}")
     print(f"[/zen] Gloo returned: {narration!r}")
     print(f"[/zen] Length: {len(narration.strip()) if narration else 0}")
 
-    # Hard cap: if narration is too long, trim to first 3 sentences OR 240 chars
-    if narration and len(narration) > 240:
-        # Try to cut at sentence boundary
+    if narration:
         sentences = narration.replace('!', '.').replace('?', '.').split('.')
         clean_sentences = [s.strip() for s in sentences if s.strip()]
         if len(clean_sentences) >= 3:
             narration = '. '.join(clean_sentences[:3]) + '.'
-        else:
-            narration = narration[:240].rsplit(' ', 1)[0] + '...'
-        print(f"[/zen] Trimmed to: {narration!r}")
-    # Fallback varied narrations if Gloo fails — no more "This was written..."
+        if len(narration) > 220:
+            narration = narration[:220].rsplit(' ', 1)[0] + '...'
+        print(f"[/zen] Final: {narration!r}")
+
     if not narration or len(narration.strip()) < 20:
         fallback_map = {
-            "peace": "A prophet in exile wrote these words while watching everything he loved fall apart. The message underneath is simple — some kinds of peace do not come from control, but from letting go. Whatever is pulling at you right now, you are allowed to set it down for a moment.",
-            "hope": "A shepherd sat alone under stars after losing nearly everything and still chose to write of what was coming. Hope is not naive optimism — it is the quiet decision to keep walking when the path is unclear. You have already been walking. That counts.",
-            "rest": "A tired teacher spoke these words to people who had worked themselves into exhaustion. The invitation has never expired. Right now, in this seat, you have permission to breathe out.",
-            "gratitude": "An ancient poet noticed what most people overlook — the small mercies stacked into ordinary days. Gratitude is not pretending things are perfect; it is refusing to let the good go unnamed. Something today is worth noticing. Try to find it.",
-            "strength": "A man who had failed publicly and often wrote these words after learning strength was not what he thought. Real strength is not the absence of weakness — it is showing up anyway. You showed up today. That is more than most manage.",
+            "peace": "The room went quiet before the words were even spoken. Peace isn't the absence of noise — it's what remains when you stop trying to fix everything. Let the road hold you for a minute.",
+            "hope": "Morning came slower that day, but it came. Hope is the choice to keep driving when the map runs out. You're still moving. That matters.",
+            "rest": "The tools stayed on the workbench for the first time in weeks. Rest isn't laziness — it's returning to yourself. Right now, you're allowed to just be here.",
+            "gratitude": "The bread was ordinary until someone noticed it was bread. Gratitude changes nothing about your day except everything. Name one thing before the next mile.",
+            "strength": "The hands shook before they held anything. Real strength is showing up scared. You already did that today.",
         }
-        narration = fallback_map.get(
-            theme,
-            "Someone in a moment much like yours left these words behind. The heart of it is quieter than it first sounds — you do not have to carry everything at once. Wherever you are heading, you are not going there alone."
-        )
+        narration = fallback_map.get(theme, "Someone stood exactly where you are now — uncertain and still moving. The old words are simpler than they sound. Keep going.")
 
     return {
         "verse": verse_text,
         "ref": verse_ref,
         "narration": narration,
     }
-
 
 @app.post("/journal")
 async def generate_journal(data: dict):
