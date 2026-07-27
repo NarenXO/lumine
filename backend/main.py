@@ -433,23 +433,80 @@ INSIGHT: <sentence>"""
 
     return {"insight": insight, "verse": "", "reference": ""}
 
-
 @app.post("/zen")
 async def zen_narration(data: dict):
     theme = data.get("theme", "peace")
     emotion = data.get("emotion", "calm")
+    seed = data.get("seed", "stillness")
     used_refs = data.get("used_refs", [])
+    verse_override = data.get("verse", "")
+    ref_override = data.get("ref", "")
 
-    verse_list = ZEN_VERSE_BANK.get(theme, ZEN_VERSE_BANK["peace"])
-    available = [v for v in verse_list if v["ref"] not in used_refs]
-    if not available:
-        available = verse_list
+    # If caller passed a specific verse (Car Mode does this), use it
+    # Otherwise pick from the bank
+    if verse_override and ref_override:
+        verse_text = verse_override
+        verse_ref = ref_override
+    else:
+        verse_list = ZEN_VERSE_BANK.get(theme, ZEN_VERSE_BANK["peace"])
+        available = [v for v in verse_list if v["ref"] not in used_refs]
+        if not available:
+            available = verse_list
+        verse = random.choice(available)
+        verse_text = verse["text"]
+        verse_ref = verse["ref"]
 
-    verse = random.choice(available)
+    # ─── Deep narration prompt ─────────────────────────
+    system_prompt = """You are Lumíne, a spiritual narrator speaking to someone driving alone.
+
+Your task: write a 3-sentence narration about a Bible verse that plays over ambient music in a car.
+
+STRICT RULES — non-negotiable:
+- EXACTLY 3 sentences. Not 2. Not 4.
+- NEVER begin with "This was written for..." or "This was preserved..." or "This came from..." or "These words..." — those phrasings are BANNED.
+- NEVER quote or repeat the verse text itself.
+- NEVER say the verse reference, book name, or chapter.
+- Each sentence must do a distinct job:
+  1. First sentence: a specific historical/human moment when this verse arose (the person, the pain, the situation — be concrete)
+  2. Second sentence: what the verse actually MEANS for a human today — translate the ancient truth into modern language
+  3. Third sentence: a direct, personal word to the listener — as if you are speaking to them alone in the car right now
+- Do NOT be poetic or flowery. Be grounded, warm, precise.
+- Vary sentence openings. Never start two sentences the same way.
+- Under 55 words total.
+- No filler phrases ("truly," "indeed," "in essence," etc.)
+- Speak like a wise, older friend — not a preacher, not a philosopher."""
+
+    user_message = f"""VERSE (do not quote or repeat this): "{verse_text}"
+CONTEXT for the driver: they are feeling {emotion}, session theme is {theme}, unique seed for variety: {seed}
+
+Now write your 3 sentences following the strict rules. Remember:
+- No opening with "This was written..." or "This came from..." — those are banned
+- Sentence 1: concrete moment/person behind the verse
+- Sentence 2: what it means today, in plain language
+- Sentence 3: speak directly to the driver, personally
+
+Write only the 3 sentences. Nothing else."""
+
+    narration = call_gloo(system_prompt, user_message, temperature=0.95)
+
+    # Fallback varied narrations if Gloo fails — no more "This was written..."
+    if not narration or len(narration.strip()) < 20:
+        fallback_map = {
+            "peace": "A prophet in exile wrote these words while watching everything he loved fall apart. The message underneath is simple — some kinds of peace do not come from control, but from letting go. Whatever is pulling at you right now, you are allowed to set it down for a moment.",
+            "hope": "A shepherd sat alone under stars after losing nearly everything and still chose to write of what was coming. Hope is not naive optimism — it is the quiet decision to keep walking when the path is unclear. You have already been walking. That counts.",
+            "rest": "A tired teacher spoke these words to people who had worked themselves into exhaustion. The invitation has never expired. Right now, in this seat, you have permission to breathe out.",
+            "gratitude": "An ancient poet noticed what most people overlook — the small mercies stacked into ordinary days. Gratitude is not pretending things are perfect; it is refusing to let the good go unnamed. Something today is worth noticing. Try to find it.",
+            "strength": "A man who had failed publicly and often wrote these words after learning strength was not what he thought. Real strength is not the absence of weakness — it is showing up anyway. You showed up today. That is more than most manage.",
+        }
+        narration = fallback_map.get(
+            theme,
+            "Someone in a moment much like yours left these words behind. The heart of it is quieter than it first sounds — you do not have to carry everything at once. Wherever you are heading, you are not going there alone."
+        )
+
     return {
-        "verse": verse["text"],
-        "ref": verse["ref"],
-        "narration": "",
+        "verse": verse_text,
+        "ref": verse_ref,
+        "narration": narration,
     }
 
 
