@@ -36,7 +36,7 @@ class AppTheme {
   // FONTS — Cormorant Garamond (display) + Manrope (body)
   // ═══════════════════════════════════════════════════════════
   static TextStyle display({
-    double size = 32,
+    double size = 36,
     Color? color,
     FontWeight weight = FontWeight.w600,
     double letterSpacing = -0.5,
@@ -51,7 +51,7 @@ class AppTheme {
       );
 
   static TextStyle body({
-    double size = 14,
+    double size = 17,
     Color? color,
     FontWeight weight = FontWeight.w300,
     double letterSpacing = 0.2,
@@ -68,7 +68,7 @@ class AppTheme {
       );
 
   static TextStyle label({
-    double size = 11,
+    double size = 14,
     Color? color,
     FontWeight weight = FontWeight.w600,
     double letterSpacing = 1.8,
@@ -80,6 +80,23 @@ class AppTheme {
         letterSpacing: letterSpacing,
       );
 
+  /// Verse style — Literata, elegant readable serif for scripture
+  static TextStyle verse({
+    double size = 17,
+    Color? color,
+    FontWeight weight = FontWeight.w400,
+    double height = 1.6,
+    FontStyle fontStyle = FontStyle.italic,
+    double letterSpacing = 0.1,
+  }) =>
+      GoogleFonts.literata(
+        fontSize: size,
+        fontWeight: weight,
+        color: color ?? textPrimary,
+        height: height,
+        fontStyle: fontStyle,
+        letterSpacing: letterSpacing,
+      );
   // ═══════════════════════════════════════════════════════════
   // SPACING
   // ═══════════════════════════════════════════════════════════
