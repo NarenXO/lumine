@@ -1,108 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'dart:math';
 import '../services/api_service.dart';
 import '../services/tts_service.dart';
 import '../services/app_controller.dart';
 import '../services/stats_service.dart';
 import '../services/theme_service.dart';
+import '../services/app_theme.dart';
+import '../widgets/lumine_background.dart';
 import 'car_mode_screen.dart';
 import 'dart:async';
-
-class ZenAuroraBackground extends StatefulWidget {
-  final Color baseColor;
-  const ZenAuroraBackground({super.key, required this.baseColor});
-
-  @override
-  State<ZenAuroraBackground> createState() => _ZenAuroraBackgroundState();
-}
-
-class _ZenAuroraBackgroundState extends State<ZenAuroraBackground>
-    with TickerProviderStateMixin {
-  late AnimationController _c1, _c2, _c3;
-
-  @override
-  void initState() {
-    super.initState();
-    _c1 = AnimationController(vsync: this, duration: const Duration(seconds: 6))
-      ..repeat(reverse: true);
-    _c2 = AnimationController(vsync: this, duration: const Duration(seconds: 9))
-      ..repeat(reverse: true);
-    _c3 = AnimationController(vsync: this, duration: const Duration(seconds: 7))
-      ..repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _c1.dispose();
-    _c2.dispose();
-    _c3.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: Listenable.merge([_c1, _c2, _c3]),
-      builder: (_, __) {
-        return Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                widget.baseColor.withOpacity(0.85),
-                widget.baseColor.withOpacity(0.6),
-                Colors.white.withOpacity(0.4),
-              ],
-            ),
-          ),
-          child: Stack(
-            children: [
-              Positioned(
-                left: 40 + 60 * _c1.value,
-                top: 80 + 40 * _c2.value,
-                child: Container(
-                  width: 220,
-                  height: 220,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white.withOpacity(0.18),
-                  ),
-                ),
-              ),
-              Positioned(
-                right: 20 + 50 * _c2.value,
-                top: 200 + 60 * _c3.value,
-                child: Container(
-                  width: 180,
-                  height: 180,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white.withOpacity(0.13),
-                  ),
-                ),
-              ),
-              Positioned(
-                left: 80 + 40 * _c3.value,
-                bottom: 100 + 50 * _c1.value,
-                child: Container(
-                  width: 160,
-                  height: 160,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white.withOpacity(0.15),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
 
 class ScriptureFeedScreen extends StatefulWidget {
   const ScriptureFeedScreen({super.key});
@@ -150,7 +57,7 @@ class _ScriptureFeedScreenState extends State<ScriptureFeedScreen>
     super.dispose();
   }
 
-  Color get _baseColor => ThemeService.getEmotionColor();
+  Color get _emotionAccent => ThemeService.getEmotionColor();
 
   int _timerToSeconds(String t) {
     switch (t) {
@@ -201,205 +108,212 @@ class _ScriptureFeedScreenState extends State<ScriptureFeedScreen>
 
   @override
   Widget build(BuildContext context) {
-    final color = _baseColor;
+    return Container(
+      color: Colors.transparent,
+      child: SafeArea(
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 28),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const SizedBox(height: 40),
 
-    return Scaffold(
-      backgroundColor: color,
-      body: Stack(
-        children: [
-          Positioned.fill(child: ZenAuroraBackground(baseColor: color)),
-          SafeArea(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 28),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    const SizedBox(height: 60),
-
-                    AnimatedBuilder(
-                      animation: _iconSway,
-                      builder: (_, __) {
-                        final sway = sin(_iconSway.value * pi) * 0.08;
-                        return Transform.rotate(
-                          angle: sway,
-                          child: Container(
-                            width: 80,
-                            height: 80,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.white.withOpacity(0.25),
-                            ),
-                            child: const Icon(
-                              Icons.spa_rounded,
-                              size: 42,
-                              color: Colors.white,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-
-                    const SizedBox(height: 40),
-
-                    Text(
-                      'Zen Mode',
-                      style: GoogleFonts.playfairDisplay(
-                        fontSize: 38,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    Text(
-                      'Let Scripture find you.',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 15,
-                        color: Colors.white.withOpacity(0.85),
-                        fontWeight: FontWeight.w400,
-                        letterSpacing: 0.3,
-                      ),
-                    ),
-
-                    const SizedBox(height: 50),
-
-                    _buildSectionLabel('Choose a theme'),
-                    const SizedBox(height: 14),
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      alignment: WrapAlignment.center,
-                      children: _themes.map(_themeChip).toList(),
-                    ),
-
-                    const SizedBox(height: 40),
-
-                    _buildSectionLabel('Session length'),
-                    const SizedBox(height: 14),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: _timers.map(_timerChip).toList(),
-                    ),
-
-                    const SizedBox(height: 50),
-
-                    AnimatedBuilder(
-                      animation: _btnPulse,
-                      builder: (_, __) {
-                        final glow = 8.0 + 12.0 * _btnPulse.value;
-                        return GestureDetector(
-                          onTap: _loading ? null : _beginSession,
-                          child: Container(
-                            width: double.infinity,
-                            height: 56,
-                            decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.85),
-                              borderRadius: BorderRadius.circular(28),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: color.withOpacity(0.55),
-                                  blurRadius: glow,
-                                  spreadRadius: 1,
-                                ),
-                              ],
-                            ),
-                            child: Center(
-                              child: _loading
-                                  ? const SizedBox(
-                                      width: 22,
-                                      height: 22,
-                                      child: CircularProgressIndicator(
-                                        color: Colors.white,
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                  : Text(
-                                      'Begin Session',
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.white,
-                                        letterSpacing: 0.4,
-                                      ),
-                                    ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-
-                    const SizedBox(height: 30),
-
-                    // Car Mode — highlighted pill
-                    GestureDetector(
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const CarModeScreen(),
-                        ),
-                      ),
+                // Spa icon — gold ring with emotion accent glow
+                AnimatedBuilder(
+                  animation: _iconSway,
+                  builder: (_, __) {
+                    final sway = sin(_iconSway.value * pi) * 0.08;
+                    return Transform.rotate(
+                      angle: sway,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 22, vertical: 14),
+                        width: 90,
+                        height: 90,
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.25),
-                          borderRadius: BorderRadius.circular(30),
-                          border: Border.all(
-                            color: Colors.white.withOpacity(0.6),
-                            width: 1.5,
-                          ),
+                          shape: BoxShape.circle,
+                          color: AppTheme.bgSlate,
+                          border: Border.all(color: AppTheme.goldMid.withOpacity(0.6), width: 1.5),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.white.withOpacity(0.2),
-                              blurRadius: 20,
+                              color: AppTheme.goldMid.withOpacity(0.25),
+                              blurRadius: 30,
                               spreadRadius: 2,
                             ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              Icons.directions_car_rounded,
-                              size: 20,
-                              color: Colors.white,
-                            )
-                                .animate(onPlay: (c) => c.repeat())
-                                .shimmer(
-                                    duration: 2000.ms, color: Colors.white),
-                            const SizedBox(width: 10),
-                            Text(
-                              'Switch to Car Mode',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 15,
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.4,
-                              ),
+                            BoxShadow(
+                              color: _emotionAccent.withOpacity(0.2),
+                              blurRadius: 40,
+                              spreadRadius: 4,
                             ),
                           ],
                         ),
-                      ),
-                    )
-                        .animate(onPlay: (c) => c.repeat(reverse: true))
-                        .scale(
-                          begin: const Offset(1.0, 1.0),
-                          end: const Offset(1.05, 1.05),
-                          duration: 1800.ms,
+                        child: Icon(
+                          Icons.spa_rounded,
+                          size: 44,
+                          color: AppTheme.goldMid,
                         ),
-
-                    const SizedBox(height: 120),
-                  ],
+                      ),
+                    );
+                  },
                 ),
-              ),
+
+                const SizedBox(height: 32),
+
+                Text(
+                  'Zen Mode',
+                  style: AppTheme.display(
+                    size: 44,
+                    color: AppTheme.textPrimary,
+                    weight: FontWeight.w600,
+                    letterSpacing: -1,
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                Text(
+                  'Let Scripture find you.',
+                  style: AppTheme.body(
+                    size: 16,
+                    color: AppTheme.textSecondary,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+
+                const SizedBox(height: 48),
+
+                _buildSectionLabel('Choose a theme'),
+                const SizedBox(height: 14),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  alignment: WrapAlignment.center,
+                  children: _themes.map(_themeChip).toList(),
+                ),
+
+                const SizedBox(height: 36),
+
+                _buildSectionLabel('Session length'),
+                const SizedBox(height: 14),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: _timers.map(_timerChip).toList(),
+                ),
+
+                const SizedBox(height: 44),
+
+                // Begin Session — gold button
+                AnimatedBuilder(
+                  animation: _btnPulse,
+                  builder: (_, __) {
+                    final glow = 12.0 + 16.0 * _btnPulse.value;
+                    return GestureDetector(
+                      onTap: _loading ? null : _beginSession,
+                      child: Container(
+                        width: double.infinity,
+                        height: 60,
+                        decoration: BoxDecoration(
+                          color: AppTheme.goldMid,
+                          borderRadius: BorderRadius.circular(30),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.goldMid.withOpacity(0.4),
+                              blurRadius: glow,
+                              spreadRadius: 2,
+                            ),
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.4),
+                              blurRadius: 20,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: _loading
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    color: AppTheme.bgDeep,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : Text(
+                                  'Begin Session',
+                                  style: AppTheme.body(
+                                    size: 17,
+                                    color: AppTheme.bgDeep,
+                                    weight: FontWeight.w700,
+                                    letterSpacing: 0.6,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+
+                const SizedBox(height: 24),
+
+                // Car Mode — highlighted glass pill
+                GestureDetector(
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const CarModeScreen(),
+                    ),
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: AppTheme.bgSlate.withOpacity(0.7),
+                      borderRadius: BorderRadius.circular(30),
+                      border: Border.all(color: AppTheme.goldMid.withOpacity(0.5), width: 1.2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.goldMid.withOpacity(0.2),
+                          blurRadius: 18,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.directions_car_rounded,
+                          size: 20,
+                          color: AppTheme.goldMid,
+                        )
+                            .animate(onPlay: (c) => c.repeat())
+                            .shimmer(duration: 2000.ms, color: AppTheme.goldSoft),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Switch to Car Mode',
+                          style: AppTheme.body(
+                            size: 15,
+                            color: AppTheme.textPrimary,
+                            weight: FontWeight.w700,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+                    .animate(onPlay: (c) => c.repeat(reverse: true))
+                    .scale(
+                      begin: const Offset(1.0, 1.0),
+                      end: const Offset(1.04, 1.04),
+                      duration: 1800.ms,
+                    ),
+
+                const SizedBox(height: 140),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     ).animate().fadeIn(duration: 500.ms);
   }
@@ -409,10 +323,9 @@ class _ScriptureFeedScreenState extends State<ScriptureFeedScreen>
       alignment: Alignment.centerLeft,
       child: Text(
         text.toUpperCase(),
-        style: GoogleFonts.plusJakartaSans(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: Colors.white.withOpacity(0.7),
+        style: AppTheme.label(
+          size: 12,
+          color: AppTheme.textSecondary,
           letterSpacing: 1.8,
         ),
       ),
@@ -424,22 +337,31 @@ class _ScriptureFeedScreenState extends State<ScriptureFeedScreen>
     return GestureDetector(
       onTap: () => setState(() => _selectedTheme = theme),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+        duration: const Duration(milliseconds: 250),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         decoration: BoxDecoration(
-          color: selected ? Colors.white : Colors.white.withOpacity(0.18),
+          color: selected ? AppTheme.goldMid : AppTheme.bgSlate.withOpacity(0.7),
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: Colors.white.withOpacity(selected ? 0.0 : 0.35),
+            color: selected ? AppTheme.goldMid : AppTheme.bgSlateGlow,
             width: 1,
           ),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: AppTheme.goldMid.withOpacity(0.35),
+                    blurRadius: 14,
+                    spreadRadius: 1,
+                  ),
+                ]
+              : null,
         ),
         child: Text(
           theme,
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: selected ? _baseColor : Colors.white,
+          style: AppTheme.body(
+            size: 13,
+            weight: FontWeight.w700,
+            color: selected ? AppTheme.bgDeep : AppTheme.textPrimary,
             letterSpacing: 0.6,
           ),
         ),
@@ -452,23 +374,32 @@ class _ScriptureFeedScreenState extends State<ScriptureFeedScreen>
     return GestureDetector(
       onTap: () => setState(() => _selectedTimer = timer),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+        duration: const Duration(milliseconds: 250),
         margin: const EdgeInsets.symmetric(horizontal: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: selected ? Colors.white : Colors.white.withOpacity(0.18),
+          color: selected ? AppTheme.goldMid : AppTheme.bgSlate.withOpacity(0.7),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: Colors.white.withOpacity(selected ? 0.0 : 0.35),
+            color: selected ? AppTheme.goldMid : AppTheme.bgSlateGlow,
             width: 1,
           ),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: AppTheme.goldMid.withOpacity(0.35),
+                    blurRadius: 12,
+                    spreadRadius: 1,
+                  ),
+                ]
+              : null,
         ),
         child: Text(
           timer,
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: selected ? _baseColor : Colors.white,
+          style: AppTheme.body(
+            size: 12,
+            weight: FontWeight.w700,
+            color: selected ? AppTheme.bgDeep : AppTheme.textPrimary,
             letterSpacing: 0.5,
           ),
         ),
@@ -476,6 +407,10 @@ class _ScriptureFeedScreenState extends State<ScriptureFeedScreen>
     );
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ZEN SESSION PAGE — full-screen route with own cosmic bg
+// ═══════════════════════════════════════════════════════════════════════════
 
 class _ZenSessionPage extends StatefulWidget {
   final String theme;
@@ -515,7 +450,6 @@ class _ZenSessionPageState extends State<_ZenSessionPage>
   late AnimationController _heartBurstController;
   Timer? _sessionTimer;
 
-  // Lower threshold + velocity detection = super responsive swipe
   static const double _swipeThreshold = 60;
   static const double _swipeVelocityThreshold = 300;
 
@@ -551,7 +485,7 @@ class _ZenSessionPageState extends State<_ZenSessionPage>
     super.dispose();
   }
 
-  Color get _baseColor => ThemeService.getEmotionColor();
+  Color get _emotionAccent => ThemeService.getEmotionColor();
 
   Future<void> _preloadNextVerse() async {
     if (_preloading) return;
@@ -731,7 +665,6 @@ class _ZenSessionPageState extends State<_ZenSessionPage>
 
   @override
   Widget build(BuildContext context) {
-    final color = _baseColor;
     final progress = widget.isFreeMode
         ? 0.0
         : (_sessionSeconds / widget.totalSeconds).clamp(0.0, 1.0);
@@ -743,21 +676,37 @@ class _ZenSessionPageState extends State<_ZenSessionPage>
     final skipOpacity = (-swipeProgress).clamp(0.0, 1.0);
 
     return Scaffold(
-      backgroundColor: color,
+      backgroundColor: AppTheme.bgDeep,
       body: Stack(
         children: [
-          Positioned.fill(child: ZenAuroraBackground(baseColor: color)),
+          // Cosmic dark background — persistent
+          const Positioned.fill(child: LumineBackground()),
 
+          // Gold progress bar at top
           Positioned(
             top: 0,
             left: 0,
             right: 0,
-            child: LinearProgressIndicator(
-              value: progress,
-              minHeight: 3,
-              backgroundColor: Colors.white.withOpacity(0.2),
-              valueColor:
-                  AlwaysStoppedAnimation(Colors.white.withOpacity(0.85)),
+            child: Container(
+              height: 3,
+              color: AppTheme.bgSlateGlow,
+              child: FractionallySizedBox(
+                alignment: Alignment.centerLeft,
+                widthFactor: progress,
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [AppTheme.goldDeep, AppTheme.goldMid],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.goldMid.withOpacity(0.5),
+                        blurRadius: 6,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
 
@@ -766,25 +715,33 @@ class _ZenSessionPageState extends State<_ZenSessionPage>
               children: [
                 Padding(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 28, vertical: 16),
+                      horizontal: 28, vertical: 18),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
                         widget.theme,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white.withOpacity(0.7),
+                        style: AppTheme.label(
+                          size: 13,
+                          color: AppTheme.goldMid,
                           letterSpacing: 2,
+                          weight: FontWeight.w700,
                         ),
                       ),
                       GestureDetector(
                         onTap: _closeSession,
-                        child: Icon(
-                          Icons.close_rounded,
-                          color: Colors.white.withOpacity(0.7),
-                          size: 22,
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppTheme.bgSlate.withOpacity(0.7),
+                            border: Border.all(color: AppTheme.bgSlateGlow),
+                          ),
+                          child: Icon(
+                            Icons.close_rounded,
+                            color: AppTheme.textSecondary,
+                            size: 20,
+                          ),
                         ),
                       ),
                     ],
@@ -794,6 +751,7 @@ class _ZenSessionPageState extends State<_ZenSessionPage>
                 Expanded(
                   child: Stack(
                     children: [
+                      // Skip indicator (left)
                       Positioned(
                         left: 20,
                         top: 0,
@@ -806,16 +764,16 @@ class _ZenSessionPageState extends State<_ZenSessionPage>
                               children: [
                                 Icon(
                                   Icons.skip_next_rounded,
-                                  color: Colors.white.withOpacity(0.8),
-                                  size: 40,
+                                  color: _emotionAccent,
+                                  size: 44,
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
                                   'Skip',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 12,
-                                    color: Colors.white.withOpacity(0.7),
-                                    fontWeight: FontWeight.w600,
+                                  style: AppTheme.body(
+                                    size: 13,
+                                    color: _emotionAccent,
+                                    weight: FontWeight.w700,
                                   ),
                                 ),
                               ],
@@ -824,6 +782,7 @@ class _ZenSessionPageState extends State<_ZenSessionPage>
                         ),
                       ),
 
+                      // Save indicator (right)
                       Positioned(
                         right: 20,
                         top: 0,
@@ -834,18 +793,18 @@ class _ZenSessionPageState extends State<_ZenSessionPage>
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(
+                                Icon(
                                   Icons.favorite_rounded,
-                                  color: Colors.white,
-                                  size: 40,
+                                  color: AppTheme.goldMid,
+                                  size: 44,
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
                                   'Save',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 12,
-                                    color: Colors.white.withOpacity(0.7),
-                                    fontWeight: FontWeight.w600,
+                                  style: AppTheme.body(
+                                    size: 13,
+                                    color: AppTheme.goldMid,
+                                    weight: FontWeight.w700,
                                   ),
                                 ),
                               ],
@@ -854,6 +813,7 @@ class _ZenSessionPageState extends State<_ZenSessionPage>
                         ),
                       ),
 
+                      // Verse card — draggable
                       Center(
                         child: GestureDetector(
                           onHorizontalDragStart: _onDragStart,
@@ -869,9 +829,33 @@ class _ZenSessionPageState extends State<_ZenSessionPage>
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 32),
                                   child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.center,
                                     children: [
-                                      _buildWordReveal(),
+                                      // Soft emotion aura behind verse
+                                      Stack(
+                                        alignment: Alignment.center,
+                                        children: [
+                                          Container(
+                                            width: 320,
+                                            height: 200,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.rectangle,
+                                              borderRadius:
+                                                  BorderRadius.circular(20),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: _emotionAccent
+                                                      .withOpacity(0.15),
+                                                  blurRadius: 80,
+                                                  spreadRadius: 10,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          _buildWordReveal(),
+                                        ],
+                                      ),
 
                                       const SizedBox(height: 32),
 
@@ -879,16 +863,13 @@ class _ZenSessionPageState extends State<_ZenSessionPage>
                                           _verseRef.isNotEmpty)
                                         Text(
                                           '— $_verseRef',
-                                          style: GoogleFonts.plusJakartaSans(
-                                            fontSize: 13,
-                                            color:
-                                                Colors.white.withOpacity(0.65),
-                                            fontWeight: FontWeight.w500,
+                                          style: AppTheme.body(
+                                            size: 14,
+                                            color: AppTheme.goldMid,
+                                            weight: FontWeight.w600,
                                             fontStyle: FontStyle.italic,
                                           ),
-                                        )
-                                            .animate()
-                                            .fadeIn(duration: 600.ms),
+                                        ).animate().fadeIn(duration: 600.ms),
 
                                       const SizedBox(height: 48),
 
@@ -900,104 +881,64 @@ class _ZenSessionPageState extends State<_ZenSessionPage>
                                             Icon(
                                               Icons.favorite_rounded,
                                               size: 14,
-                                              color: Colors.white
-                                                  .withOpacity(0.6),
+                                              color: AppTheme.goldMid
+                                                  .withOpacity(0.7),
                                             ),
                                             const SizedBox(width: 6),
                                             Text(
                                               '$_resonanceCount souls resonating',
-                                              style:
-                                                  GoogleFonts.plusJakartaSans(
-                                                fontSize: 12,
-                                                color: Colors.white
-                                                    .withOpacity(0.6),
-                                                fontWeight: FontWeight.w500,
+                                              style: AppTheme.body(
+                                                size: 13,
+                                                color: AppTheme.textSecondary,
+                                                weight: FontWeight.w500,
                                               ),
                                             ),
                                           ],
-                                        )
-                                            .animate()
-                                            .fadeIn(duration: 800.ms),
+                                        ).animate().fadeIn(duration: 800.ms),
 
                                       const SizedBox(height: 24),
 
-                                      // Highlighted swipe hint pill
+                                                                            // Naked swipe hint — no pill
                                       if (_verseFullyRevealed &&
                                           _dragOffset == 0 &&
                                           !_actionTriggered)
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 18,
-                                            vertical: 10,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color:
-                                                Colors.white.withOpacity(0.2),
-                                            borderRadius:
-                                                BorderRadius.circular(24),
-                                            border: Border.all(
-                                              color: Colors.white
-                                                  .withOpacity(0.4),
-                                              width: 1,
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Icon(
+                                              Icons.arrow_back_rounded,
+                                              size: 14,
+                                              color: AppTheme.textSecondary,
                                             ),
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Icon(
-                                                Icons.arrow_back_rounded,
-                                                size: 14,
-                                                color: Colors.white
-                                                    .withOpacity(0.85),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              'skip',
+                                              style: AppTheme.body(
+                                                size: 13,
+                                                color: AppTheme.textSecondary,
+                                                weight: FontWeight.w600,
+                                                letterSpacing: 1.2,
                                               ),
-                                              const SizedBox(width: 6),
-                                              Text(
-                                                'skip',
-                                                style: GoogleFonts
-                                                    .plusJakartaSans(
-                                                  fontSize: 12,
-                                                  color: Colors.white,
-                                                  fontWeight: FontWeight.w700,
-                                                  letterSpacing: 1,
-                                                ),
+                                            ),
+                                            const SizedBox(width: 24),
+                                            Text(
+                                              'save',
+                                              style: AppTheme.body(
+                                                size: 13,
+                                                color: AppTheme.goldMid,
+                                                weight: FontWeight.w600,
+                                                letterSpacing: 1.2,
                                               ),
-                                              Container(
-                                                width: 1,
-                                                height: 12,
-                                                margin: const EdgeInsets
-                                                    .symmetric(
-                                                    horizontal: 12),
-                                                color: Colors.white
-                                                    .withOpacity(0.3),
-                                              ),
-                                              Text(
-                                                'save',
-                                                style: GoogleFonts
-                                                    .plusJakartaSans(
-                                                  fontSize: 12,
-                                                  color: Colors.white,
-                                                  fontWeight: FontWeight.w700,
-                                                  letterSpacing: 1,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 6),
-                                              Icon(
-                                                Icons.arrow_forward_rounded,
-                                                size: 14,
-                                                color: Colors.white
-                                                    .withOpacity(0.85),
-                                              ),
-                                            ],
-                                          ),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Icon(
+                                              Icons.arrow_forward_rounded,
+                                              size: 14,
+                                              color: AppTheme.goldMid,
+                                            ),
+                                          ],
                                         )
-                                            .animate(
-                                                onPlay: (c) =>
-                                                    c.repeat(reverse: true))
-                                            .scale(
-                                              begin: const Offset(1.0, 1.0),
-                                              end: const Offset(1.06, 1.06),
-                                              duration: 1500.ms,
-                                            )
                                             .animate()
                                             .fadeIn(
                                                 delay: 800.ms,
@@ -1011,21 +952,21 @@ class _ZenSessionPageState extends State<_ZenSessionPage>
                         ),
                       ),
 
+                      // Heart burst on save
                       if (_showHeartBurst)
                         Center(
                           child: AnimatedBuilder(
                             animation: _heartBurstController,
                             builder: (_, __) {
                               return Transform.scale(
-                                scale:
-                                    0.5 + _heartBurstController.value * 1.5,
+                                scale: 0.5 + _heartBurstController.value * 1.5,
                                 child: Opacity(
                                   opacity:
                                       (1.0 - _heartBurstController.value)
                                           .clamp(0.0, 1.0),
-                                  child: const Icon(
+                                  child: Icon(
                                     Icons.favorite_rounded,
-                                    color: Colors.white,
+                                    color: AppTheme.goldMid,
                                     size: 80,
                                   ),
                                 ),
@@ -1046,37 +987,41 @@ class _ZenSessionPageState extends State<_ZenSessionPage>
 
   Widget _buildWordReveal() {
     if (_words.isEmpty) {
-      return const SizedBox(
+      return SizedBox(
         height: 40,
         child: Center(
           child: CircularProgressIndicator(
-            color: Colors.white,
+            color: AppTheme.goldMid,
             strokeWidth: 2,
           ),
         ),
       );
     }
 
-    return Wrap(
-      alignment: WrapAlignment.center,
-      spacing: 5,
-      runSpacing: 8,
-      children: List.generate(_words.length, (i) {
-        final visible = i < _revealedWords;
-        return AnimatedOpacity(
-          opacity: visible ? 1.0 : 0.0,
-          duration: const Duration(milliseconds: 300),
-          child: Text(
-            _words[i],
-            style: GoogleFonts.playfairDisplay(
-              fontSize: 26,
-              fontWeight: FontWeight.w500,
-              color: Colors.white,
-              height: 1.5,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        spacing: 5,
+        runSpacing: 10,
+        children: List.generate(_words.length, (i) {
+          final visible = i < _revealedWords;
+          return AnimatedOpacity(
+            opacity: visible ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 350),
+            child: Text(
+              _words[i],
+              style: AppTheme.verse(
+                size: 26,
+                color: AppTheme.textPrimary,
+                height: 1.55,
+                weight: FontWeight.w500,
+                fontStyle: FontStyle.normal,
+              ),
             ),
-          ),
-        );
-      }),
+          );
+        }),
+      ),
     );
   }
 }
