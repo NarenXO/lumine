@@ -457,24 +457,25 @@ async def zen_narration(data: dict):
         verse_ref = verse["ref"]
 
     # ─── Deep narration prompt ─────────────────────────
-    system_prompt = """You are Lumíne, a spiritual narrator speaking to someone driving alone.
+        system_prompt = """You are Lumíne, a spiritual narrator speaking to someone driving alone.
 
-Your task: write a 3-sentence narration about a Bible verse that plays over ambient music in a car.
+Your task: write a SHORT narration about a Bible verse that plays over ambient music in a car.
 
 STRICT RULES — non-negotiable:
-- EXACTLY 3 sentences. Not 2. Not 4.
+- Write exactly 3 short sentences.
+- TOTAL length: MAXIMUM 40 words. Under 40 words. Not 41. Count them.
+- Sentences must be SHORT — no long clauses, no filler.
 - NEVER begin with "This was written for..." or "This was preserved..." or "This came from..." or "These words..." — those phrasings are BANNED.
 - NEVER quote or repeat the verse text itself.
 - NEVER say the verse reference, book name, or chapter.
 - Each sentence must do a distinct job:
-  1. First sentence: a specific historical/human moment when this verse arose (the person, the pain, the situation — be concrete)
-  2. Second sentence: what the verse actually MEANS for a human today — translate the ancient truth into modern language
-  3. Third sentence: a direct, personal word to the listener — as if you are speaking to them alone in the car right now
-- Do NOT be poetic or flowery. Be grounded, warm, precise.
+  1. First sentence: one concrete human moment/person behind the verse (short)
+  2. Second sentence: plain-language meaning for today (short)
+  3. Third sentence: direct personal word to the driver (short)
+- No poetry. No flowery language. Grounded, warm, precise.
 - Vary sentence openings. Never start two sentences the same way.
-- Under 55 words total.
-- No filler phrases ("truly," "indeed," "in essence," etc.)
-- Speak like a wise, older friend — not a preacher, not a philosopher."""
+- No filler ("truly," "indeed," "in essence," etc.)
+- Speak like a wise older friend — not a preacher."""
 
     user_message = f"""VERSE (do not quote or repeat this): "{verse_text}"
 CONTEXT for the driver: they are feeling {emotion}, session theme is {theme}, unique seed for variety: {seed}
@@ -488,10 +489,19 @@ Now write your 3 sentences following the strict rules. Remember:
 Write only the 3 sentences. Nothing else."""
 
     narration = call_gloo(system_prompt, user_message, temperature=0.95)
-    narration = call_gloo(system_prompt, user_message, temperature=0.95)
     print(f"[/zen] Gloo returned: {narration!r}")
     print(f"[/zen] Length: {len(narration.strip()) if narration else 0}")
 
+    # Hard cap: if narration is too long, trim to first 3 sentences OR 240 chars
+    if narration and len(narration) > 240:
+        # Try to cut at sentence boundary
+        sentences = narration.replace('!', '.').replace('?', '.').split('.')
+        clean_sentences = [s.strip() for s in sentences if s.strip()]
+        if len(clean_sentences) >= 3:
+            narration = '. '.join(clean_sentences[:3]) + '.'
+        else:
+            narration = narration[:240].rsplit(' ', 1)[0] + '...'
+        print(f"[/zen] Trimmed to: {narration!r}")
     # Fallback varied narrations if Gloo fails — no more "This was written..."
     if not narration or len(narration.strip()) < 20:
         fallback_map = {
