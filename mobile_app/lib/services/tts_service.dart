@@ -9,7 +9,7 @@ class TtsService {
   // ═══════════════════════════════════════════════════════════
   // ELEVENLABS CONFIG — paste your API key on the next line
   // ═══════════════════════════════════════════════════════════
-  static const String _elevenLabsApiKey = 'sk_44090111543640888ec9c4ce6c7ca1c567283ea29be98b8e';
+  static const String _elevenLabsApiKey = 'sk_d5523d50f7f642d239bac8fff2457222c6559a1e3bba5b04';
   static const String _voiceId = 'EXAVITQu4vr4xnSDxMaL'; // Sarah/Bella — soft female
   static const bool _useElevenLabs = true;
   static const String _model = 'eleven_turbo_v2_5';

@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:math';
 import 'dart:convert';
-import 'dart:ui';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:http/http.dart' as http;
 import '../services/tts_service.dart';
 import '../services/theme_service.dart';
+import '../services/app_theme.dart';
 
 class CarModeScreen extends StatefulWidget {
   const CarModeScreen({super.key});
@@ -23,11 +23,10 @@ class _CarModeScreenState extends State<CarModeScreen>
   final Random _random = Random();
 
   bool _isNarrating = false;
-    String _currentVerse = '';
+  String _currentVerse = '';
   String _currentRef = '';
   String _currentNarration = '';
 
-  // Word-by-word reveal
   List<String> _words = [];
   int _revealedWords = 0;
   int _verseIndex = 0;
@@ -43,6 +42,7 @@ class _CarModeScreenState extends State<CarModeScreen>
 
   late AnimationController _auroraController;
   late AnimationController _starGlowController;
+  late AnimationController _particleController;
 
   final List<Map<String, String>> _verses = [
     {'text': 'Be still, and know that I am God.', 'ref': 'Psalm 46:10'},
@@ -71,6 +71,9 @@ class _CarModeScreenState extends State<CarModeScreen>
     _starGlowController = AnimationController(
         vsync: this, duration: const Duration(seconds: 3))
       ..repeat(reverse: true);
+    _particleController = AnimationController(
+        vsync: this, duration: const Duration(seconds: 20))
+      ..repeat();
     _verses.shuffle();
     _startCarMode();
   }
@@ -116,10 +119,9 @@ class _CarModeScreenState extends State<CarModeScreen>
     _preloading = false;
   }
 
-    void _playCurrentVerse() async {
+  void _playCurrentVerse() async {
     if (!mounted) return;
 
-    // Start word-by-word reveal
     _words = _currentVerse.split(' ');
     _revealedWords = 0;
     setState(() {});
@@ -128,13 +130,12 @@ class _CarModeScreenState extends State<CarModeScreen>
       if (!mounted) return;
       if (_revealedWords < _words.length) {
         setState(() => _revealedWords++);
-        Future.delayed(const Duration(milliseconds: 280), revealNext);
+        Future.delayed(const Duration(milliseconds: 199), revealNext);
       }
     }
 
     revealNext();
 
-    // TTS speaks verse only
     Completer<void> verseComplete = Completer<void>();
     TtsService.speakWithCallback(_currentVerse, 0.35, () {
       if (!verseComplete.isCompleted) verseComplete.complete();
@@ -182,7 +183,7 @@ class _CarModeScreenState extends State<CarModeScreen>
       wait += 100;
     }
 
-        _verseIndex++;
+    _verseIndex++;
     setState(() {
       _currentVerse = _nextVerse.isNotEmpty
           ? _nextVerse
@@ -227,7 +228,7 @@ class _CarModeScreenState extends State<CarModeScreen>
           'emotion': 'calm',
           'used_refs': [],
         }),
-      );
+      ).timeout(const Duration(seconds: 6));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         String narration = data['narration'] ?? '';
@@ -263,6 +264,7 @@ class _CarModeScreenState extends State<CarModeScreen>
   void dispose() {
     _auroraController.dispose();
     _starGlowController.dispose();
+    _particleController.dispose();
     _audioPlayer.stop();
     _audioPlayer.dispose();
     _progressTimer?.cancel();
@@ -276,19 +278,46 @@ class _CarModeScreenState extends State<CarModeScreen>
     final progress = (_elapsedSeconds / 300).clamp(0.0, 1.0);
 
     return Scaffold(
+      backgroundColor: AppTheme.bgDeep,
       body: Stack(
         children: [
-          CarAuroraBackground(
-              controller: _auroraController,
-              emotionColor: emotionColor),
+          // Dark cosmic background
+          Positioned.fill(
+            child: AnimatedBuilder(
+              animation: _auroraController,
+              builder: (_, __) {
+                return CustomPaint(
+                  painter: _CarDarkBgPainter(
+                    t: _auroraController.value * 2 * pi,
+                    emotionColor: emotionColor,
+                  ),
+                );
+              },
+            ),
+          ),
 
+          // Rising gold particles
+          Positioned.fill(
+            child: AnimatedBuilder(
+              animation: _particleController,
+              builder: (_, __) {
+                return CustomPaint(
+                  painter: _CarParticlesPainter(
+                    t: _particleController.value,
+                  ),
+                );
+              },
+            ),
+          ),
+
+          // Gold progress bar at top
           Positioned(
             top: 0,
             left: 0,
             right: 0,
             child: Container(
               height: 3,
-              color: Colors.black.withOpacity(0.06),
+              color: Colors.black.withOpacity(0.3),
               child: FractionallySizedBox(
                 alignment: Alignment.centerLeft,
                 widthFactor: progress,
@@ -296,13 +325,18 @@ class _CarModeScreenState extends State<CarModeScreen>
                   duration: const Duration(seconds: 1),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                        colors: [emotionColor, const Color(0xFF0F0F0F)]),
+                      colors: [
+                        AppTheme.goldMid.withOpacity(0.8),
+                        emotionColor.withOpacity(0.6),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
           ),
 
+          // Main content
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 30),
@@ -310,27 +344,39 @@ class _CarModeScreenState extends State<CarModeScreen>
                 children: [
                   const SizedBox(height: 20),
 
+                  // Header
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('CAR MODE',
-                          style: GoogleFonts.plusJakartaSans(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 3,
-                              color:
-                                  const Color(0xFF0F0F0F).withOpacity(0.5))),
+                      Text(
+                        'CAR MODE',
+                        style: GoogleFonts.manrope(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 3,
+                          color: AppTheme.textTertiary,
+                        ),
+                      ),
                       GestureDetector(
                         onTap: _exitCarMode,
-                        child: Icon(Icons.close_rounded,
-                            color: const Color(0xFF0F0F0F).withOpacity(0.6),
-                            size: 22),
+                        child: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: AppTheme.bgSlate,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: AppTheme.borderSoft),
+                          ),
+                          child: Icon(Icons.close_rounded,
+                              color: AppTheme.textSecondary, size: 18),
+                        ),
                       ),
                     ],
                   ),
 
                   const Spacer(flex: 1),
 
+                  // Gold star
                   AnimatedBuilder(
                     animation: _starGlowController,
                     builder: (context, child) {
@@ -341,26 +387,45 @@ class _CarModeScreenState extends State<CarModeScreen>
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           gradient: RadialGradient(colors: [
-                            const Color(0xFFFFD700).withOpacity(0.3 * glow),
-                            Colors.transparent
+                            AppTheme.goldMid.withOpacity(0.25 * glow),
+                            Colors.transparent,
                           ]),
                         ),
                         child: CustomPaint(
                           size: const Size(60, 60),
-                          painter: CarStarPainter(glow: glow),
+                          painter: _CarStarPainter(glow: glow),
                         ),
                       );
                     },
                   ),
 
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 12),
 
+                  // Verse reference
+                  AnimatedOpacity(
+                    opacity: _currentRef.isNotEmpty ? 0.6 : 0.0,
+                    duration: const Duration(milliseconds: 500),
+                    child: Text(
+                      _currentRef,
+                      style: GoogleFonts.manrope(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.goldMid,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Verse word-by-word + narration
                   AnimatedOpacity(
                     opacity: _contentOpacity,
                     duration: const Duration(milliseconds: 16),
                     child: Column(
                       children: [
-                                                _words.isEmpty
+                        // Word-by-word verse
+                        _words.isEmpty
                             ? const SizedBox(height: 40)
                             : Wrap(
                                 alignment: WrapAlignment.center,
@@ -371,37 +436,53 @@ class _CarModeScreenState extends State<CarModeScreen>
                                   return AnimatedOpacity(
                                     opacity: visible ? 1.0 : 0.0,
                                     duration: const Duration(milliseconds: 300),
-                                    child: Text(
-                                      _words[i],
-                                      style: GoogleFonts.playfairDisplay(
-                                        fontSize: 26,
-                                        fontWeight: FontWeight.w500,
-                                        color: Colors.white,
-                                        height: 1.5,
+                                    child: AnimatedContainer(
+                                      duration: const Duration(milliseconds: 300),
+                                      transform: Matrix4.translationValues(
+                                          0, visible ? 0 : 8, 0),
+                                      child: Text(
+                                        _words[i],
+                                        style: GoogleFonts.literata(
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.w400,
+                                          color: AppTheme.textPrimary,
+                                          height: 1.6,
+                                        ),
                                       ),
                                     ),
                                   );
                                 }),
                               ),
 
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 20),
 
+                        // Narration box
                         AnimatedOpacity(
                           opacity: _isNarrating ? 1.0 : 0.0,
                           duration: const Duration(milliseconds: 800),
                           child: Container(
                             padding: const EdgeInsets.all(20),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.22),
+                              color: AppTheme.bgSlate,
                               borderRadius: BorderRadius.circular(24),
+                              border: Border.all(
+                                color: AppTheme.goldMid.withOpacity(0.2),
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppTheme.goldMid.withOpacity(0.06),
+                                  blurRadius: 20,
+                                  spreadRadius: 2,
+                                ),
+                              ],
                             ),
                             child: Text(
                               _currentNarration,
                               textAlign: TextAlign.center,
-                              style: GoogleFonts.plusJakartaSans(
+                              style: GoogleFonts.literata(
                                 fontSize: 14,
                                 height: 1.7,
-                                color: Colors.white.withOpacity(0.92),
+                                color: AppTheme.textSecondary,
                                 fontStyle: FontStyle.italic,
                               ),
                             ),
@@ -413,20 +494,42 @@ class _CarModeScreenState extends State<CarModeScreen>
 
                   const Spacer(flex: 2),
 
+                  // Status label
                   AnimatedOpacity(
-                    opacity: _isNarrating ? 1.0 : 0.3,
+                    opacity: _isNarrating ? 1.0 : 0.4,
                     duration: const Duration(milliseconds: 500),
-                    child: Text(
-                      _isNarrating ? 'Lumíne is speaking' : 'Lumíne is with you',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 11,
-                        color: Colors.white.withOpacity(0.75),
-                        letterSpacing: 1,
-                      ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        AnimatedBuilder(
+                          animation: _starGlowController,
+                          builder: (_, __) {
+                            return Container(
+                              width: 6,
+                              height: 6,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: AppTheme.goldMid.withOpacity(
+                                    0.5 + _starGlowController.value * 0.5),
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          _isNarrating ? 'Lumíne is speaking' : 'Lumíne is with you',
+                          style: GoogleFonts.manrope(
+                            fontSize: 11,
+                            color: AppTheme.textTertiary,
+                            letterSpacing: 1,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
 
-                  const SizedBox(height: 120),
+                  const SizedBox(height: 60),
                 ],
               ),
             ),
@@ -437,9 +540,129 @@ class _CarModeScreenState extends State<CarModeScreen>
   }
 }
 
-class CarStarPainter extends CustomPainter {
+// ══════════════════════════════════════════════════════════════════
+// DARK COSMIC BACKGROUND — emotion aura + drifting clouds
+// ══════════════════════════════════════════════════════════════════
+class _CarDarkBgPainter extends CustomPainter {
+  final double t;
+  final Color emotionColor;
+
+  _CarDarkBgPainter({required this.t, required this.emotionColor});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Deep midnight base
+    canvas.drawRect(
+      Offset.zero & size,
+      Paint()..color = const Color(0xFF0F1214),
+    );
+
+    // Emotion aura — left side
+    canvas.drawCircle(
+      Offset(-size.width * 0.15 + sin(t * 0.3) * 30,
+          size.height * 0.35 + cos(t * 0.2) * 40),
+      size.width * 0.7,
+      Paint()
+        ..shader = RadialGradient(
+          colors: [
+            emotionColor.withOpacity(0.12),
+            emotionColor.withOpacity(0.04),
+            Colors.transparent,
+          ],
+        ).createShader(Rect.fromCircle(
+          center: Offset(-size.width * 0.15, size.height * 0.35),
+          radius: size.width * 0.7,
+        )),
+    );
+
+    // Emotion aura — right side
+    canvas.drawCircle(
+      Offset(size.width * 1.1 + cos(t * 0.25) * 25,
+          size.height * 0.6 + sin(t * 0.3) * 35),
+      size.width * 0.6,
+      Paint()
+        ..shader = RadialGradient(
+          colors: [
+            emotionColor.withOpacity(0.08),
+            emotionColor.withOpacity(0.02),
+            Colors.transparent,
+          ],
+        ).createShader(Rect.fromCircle(
+          center: Offset(size.width * 1.1, size.height * 0.6),
+          radius: size.width * 0.6,
+        )),
+    );
+
+    // Gold vignette top
+    canvas.drawCircle(
+      Offset(size.width * 0.5, -size.height * 0.1),
+      size.width * 0.8,
+      Paint()
+        ..shader = RadialGradient(
+          colors: [
+            const Color(0xFFF1D98A).withOpacity(0.06),
+            Colors.transparent,
+          ],
+        ).createShader(Rect.fromCircle(
+          center: Offset(size.width * 0.5, -size.height * 0.1),
+          radius: size.width * 0.8,
+        )),
+    );
+
+    // Star field
+    final rng = Random(42);
+    final starPaint = Paint();
+    for (int i = 0; i < 60; i++) {
+      final x = rng.nextDouble() * size.width;
+      final y = rng.nextDouble() * size.height;
+      final twinkle = 0.3 + sin(t * 0.8 + i * 1.7) * 0.3;
+      starPaint.color = Colors.white.withOpacity(twinkle * 0.6);
+      canvas.drawCircle(Offset(x, y), 0.8 + rng.nextDouble() * 0.5, starPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _CarDarkBgPainter old) =>
+      old.t != t || old.emotionColor != emotionColor;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// RISING GOLD PARTICLES
+// ══════════════════════════════════════════════════════════════════
+class _CarParticlesPainter extends CustomPainter {
+  final double t;
+  _CarParticlesPainter({required this.t});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rng = Random(77);
+    final paint = Paint();
+
+    for (int i = 0; i < 25; i++) {
+      final baseX = rng.nextDouble() * size.width;
+      final speed = 0.3 + rng.nextDouble() * 0.7;
+      final phase = rng.nextDouble() * 2 * pi;
+      final particleSize = 1.0 + rng.nextDouble() * 1.5;
+
+      final y = size.height - ((t * speed + phase / (2 * pi)) % 1.0) * (size.height + 40);
+      final x = baseX + sin(t * 2 * pi * 0.3 + phase) * 15;
+      final alpha = 0.15 + sin(t * 2 * pi + phase) * 0.1;
+
+      paint.color = const Color(0xFFF1D98A).withOpacity(alpha.clamp(0.05, 0.3));
+      canvas.drawCircle(Offset(x, y), particleSize, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _CarParticlesPainter old) => old.t != t;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// GOLD STAR — same 4-point star, dark-theme optimized
+// ══════════════════════════════════════════════════════════════════
+class _CarStarPainter extends CustomPainter {
   final double glow;
-  CarStarPainter({required this.glow});
+  _CarStarPainter({required this.glow});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -459,101 +682,35 @@ class CarStarPainter extends CustomPainter {
         center.dx - waist, center.dy - waist, center.dx, center.dy - outerRadius);
     path.close();
 
-    final glowPaint = Paint()
-      ..color = const Color(0xFFFFD700).withOpacity(0.5 + glow * 0.3)
-      ..maskFilter = MaskFilter.blur(BlurStyle.normal, 12 + glow * 6);
-    canvas.drawPath(path, glowPaint);
+    // Outer glow
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = const Color(0xFFF1D98A).withOpacity(0.3 + glow * 0.3)
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, 14 + glow * 8),
+    );
 
-    final corePaint = Paint()
-      ..shader = RadialGradient(colors: [
-        const Color(0xFFFFF8DC).withOpacity(0.9),
-        const Color(0xFFFFD700).withOpacity(0.4),
-        Colors.transparent
-      ]).createShader(Rect.fromCircle(center: center, radius: outerRadius));
-    canvas.drawPath(path, corePaint);
+    // Core
+    canvas.drawPath(
+      path,
+      Paint()
+        ..shader = RadialGradient(colors: [
+          const Color(0xFFFFF8E5).withOpacity(0.95),
+          const Color(0xFFF1D98A).withOpacity(0.5),
+          Colors.transparent,
+        ]).createShader(Rect.fromCircle(center: center, radius: outerRadius)),
+    );
 
-    final borderPaint = Paint()
-      ..color = const Color(0xFF0F0F0F).withOpacity(0.3)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.8;
-    canvas.drawPath(path, borderPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CarStarPainter oldDelegate) =>
-      oldDelegate.glow != glow;
-}
-class CarAuroraBackground extends StatelessWidget {
-  final AnimationController controller;
-  final Color emotionColor;
-
-  const CarAuroraBackground(
-      {super.key, required this.controller, required this.emotionColor});
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: controller,
-      builder: (context, child) {
-        final t = controller.value * 2 * pi;
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 1200),
-          color: emotionColor,
-          child: Stack(
-            children: [
-              Positioned(
-                top: -50 + sin(t) * 80,
-                left: -100 + cos(t) * 100,
-                child: Container(
-                  width: 500,
-                  height: 500,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(colors: [
-                      Colors.white.withOpacity(0.35),
-                      Colors.transparent
-                    ]),
-                  ),
-                ),
-              ),
-              Positioned(
-                top: 200 + cos(t + 1) * 100,
-                right: -80 + sin(t + 1) * 80,
-                child: Container(
-                  width: 480,
-                  height: 480,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(colors: [
-                      Colors.white.withOpacity(0.25),
-                      Colors.transparent
-                    ]),
-                  ),
-                ),
-              ),
-              Positioned(
-                bottom: -80 + cos(t + 3) * 70,
-                left: -50 + sin(t + 3) * 80,
-                child: Container(
-                  width: 400,
-                  height: 400,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(colors: [
-                      Colors.white.withOpacity(0.20),
-                      Colors.transparent
-                    ]),
-                  ),
-                ),
-              ),
-              BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
-                child: Container(color: Colors.transparent),
-              ),
-            ],
-          ),
-        );
-      },
+    // Subtle border
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = const Color(0xFFF1D98A).withOpacity(0.2)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.8,
     );
   }
+
+  @override
+  bool shouldRepaint(covariant _CarStarPainter old) => old.glow != glow;
 }
