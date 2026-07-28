@@ -9,6 +9,8 @@ import '../services/stats_service.dart';
 import '../services/theme_service.dart';
 import '../services/notification_service.dart';
 import '../services/calendar_service.dart';
+import '../services/memory_service.dart';
+import '../services/app_theme.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -1141,10 +1143,198 @@ class _ProfileScreenState extends State<ProfileScreen>
               Text(' → ', style: GoogleFonts.plusJakartaSans(fontSize: 13, color: Colors.white.withOpacity(0.7))),
               _timePill(_quietEnd, (t) => setState(() => _quietEnd = t)),
             ],
+                      const SizedBox(height: 20),
+
+          Container(height: 1, color: Colors.white.withOpacity(0.1)),
+
+          const SizedBox(height: 20),
+
+          GestureDetector(
+            onTap: () => _showResetConfirmation(),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE85D5D).withOpacity(0.15),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: const Color(0xFFE85D5D).withOpacity(0.4),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.refresh_rounded, color: Color(0xFFE85D5D), size: 18),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Begin Again',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFFE85D5D),
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          Text(
+            'This will clear all your data and start fresh.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 11,
+              color: Colors.white.withOpacity(0.4),
+              fontStyle: FontStyle.italic,
+            ),
+          ),
           ),
         ],
       ),
     );
+  }
+
+  void _showResetConfirmation() {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.85),
+      builder: (_) => Dialog(
+        backgroundColor: AppTheme.bgSlate,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: BorderSide(color: AppTheme.bgSlateGlow),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.spa_rounded, color: AppTheme.goldMid, size: 40),
+              const SizedBox(height: 16),
+              Text(
+                'Begin Again?',
+                style: AppTheme.display(
+                  size: 24,
+                  color: AppTheme.textPrimary,
+                  weight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'This will clear all your conversations, saved verses, emotion history, soul map, and memory.\n\nLumíne will meet you as if for the first time.',
+                textAlign: TextAlign.center,
+                style: AppTheme.body(
+                  size: 14,
+                  color: AppTheme.textSecondary,
+                  height: 1.6,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          color: AppTheme.bgSlateHigh,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppTheme.bgSlateGlow),
+                        ),
+                        child: Center(
+                          child: Text(
+                            'Stay',
+                            style: AppTheme.body(
+                              size: 14,
+                              weight: FontWeight.w700,
+                              color: AppTheme.textPrimary,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () async {
+                        Navigator.pop(context);
+                        await _performReset();
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE85D5D),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Center(
+                          child: Text(
+                            'Begin Again',
+                            style: AppTheme.body(
+                              size: 14,
+                              weight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _performReset() async {
+    await MemoryService.clearChatHistory();
+    await MemoryService.saveMemoryProfile({
+      'themes': [],
+      'recurring_struggles': [],
+      'milestones': [],
+      'preferred_tone': 'warm',
+      'spiritual_focus_areas': [],
+      'last_summarized_at': null,
+      'message_count_at_last_summary': 0,
+    });
+
+    StatsService.sacredInterruptions = 0;
+    StatsService.versesReceived = 0;
+    StatsService.habitsChecked = 0;
+    StatsService.streakDays = 0;
+    StatsService.savedVerses.clear();
+    StatsService.emotionHistory.clear();
+    StatsService.verseHistory.clear();
+    StatsService.stressSpikes.clear();
+    StatsService.recoveryTimesMinutes.clear();
+    StatsService.todayJournal = '';
+    StatsService.glooFingerprint = '';
+
+    AppController().setEmotion('calm');
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Lumíne has been reset. Welcome back.',
+          style: GoogleFonts.plusJakartaSans(fontSize: 14, color: Colors.white),
+        ),
+        backgroundColor: const Color(0xFFE85D5D),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+
+    setState(() {});
   }
 
   Widget _segmentRow(String label, List<String> options, String current, ValueChanged<String> onChanged) {
