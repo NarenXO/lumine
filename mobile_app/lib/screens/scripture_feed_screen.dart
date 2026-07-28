@@ -119,8 +119,6 @@ class _ScriptureFeedScreenState extends State<ScriptureFeedScreen>
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 const SizedBox(height: 40),
-
-                // Spa icon — gold ring with emotion accent glow
                 AnimatedBuilder(
                   animation: _iconSway,
                   builder: (_, __) {
@@ -156,9 +154,7 @@ class _ScriptureFeedScreenState extends State<ScriptureFeedScreen>
                     );
                   },
                 ),
-
                 const SizedBox(height: 32),
-
                 Text(
                   'Zen Mode',
                   style: AppTheme.display(
@@ -168,9 +164,7 @@ class _ScriptureFeedScreenState extends State<ScriptureFeedScreen>
                     letterSpacing: -1,
                   ),
                 ),
-
                 const SizedBox(height: 12),
-
                 Text(
                   'Let Scripture find you.',
                   style: AppTheme.body(
@@ -179,9 +173,7 @@ class _ScriptureFeedScreenState extends State<ScriptureFeedScreen>
                     letterSpacing: 0.4,
                   ),
                 ),
-
                 const SizedBox(height: 48),
-
                 _buildSectionLabel('Choose a theme'),
                 const SizedBox(height: 14),
                 Wrap(
@@ -190,19 +182,14 @@ class _ScriptureFeedScreenState extends State<ScriptureFeedScreen>
                   alignment: WrapAlignment.center,
                   children: _themes.map(_themeChip).toList(),
                 ),
-
                 const SizedBox(height: 36),
-
                 _buildSectionLabel('Session length'),
                 const SizedBox(height: 14),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: _timers.map(_timerChip).toList(),
                 ),
-
                 const SizedBox(height: 44),
-
-                // Begin Session — gold button
                 AnimatedBuilder(
                   animation: _btnPulse,
                   builder: (_, __) {
@@ -252,10 +239,7 @@ class _ScriptureFeedScreenState extends State<ScriptureFeedScreen>
                     );
                   },
                 ),
-
                 const SizedBox(height: 24),
-
-                // Car Mode — highlighted glass pill
                 GestureDetector(
                   onTap: () => Navigator.push(
                     context,
@@ -308,7 +292,6 @@ class _ScriptureFeedScreenState extends State<ScriptureFeedScreen>
                       end: const Offset(1.04, 1.04),
                       duration: 1800.ms,
                     ),
-
                 const SizedBox(height: 140),
               ],
             ),
@@ -409,7 +392,7 @@ class _ScriptureFeedScreenState extends State<ScriptureFeedScreen>
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// ZEN SESSION PAGE — full-screen route with own cosmic bg
+// ZEN SESSION PAGE
 // ═══════════════════════════════════════════════════════════════════════════
 
 class _ZenSessionPage extends StatefulWidget {
@@ -443,11 +426,17 @@ class _ZenSessionPageState extends State<_ZenSessionPage>
 
   int _sessionSeconds = 0;
 
+  // ── Swipe state — refactored to use AnimationController ──
   double _dragOffset = 0;
-  bool _actionTriggered = false;
+  bool _isProcessing = false; // Locks input while a swipe is completing
   bool _showHeartBurst = false;
 
   late AnimationController _heartBurstController;
+  late AnimationController _swipeAnimController; // Handles swipe-out + snap-back cleanly
+  double _swipeAnimStart = 0;
+  double _swipeAnimEnd = 0;
+  Curve _swipeAnimCurve = Curves.easeOut;
+
   Timer? _sessionTimer;
 
   static const double _swipeThreshold = 60;
@@ -460,11 +449,27 @@ class _ZenSessionPageState extends State<_ZenSessionPage>
       vsync: this,
       duration: const Duration(milliseconds: 700),
     );
+
+    _swipeAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 280),
+    )..addListener(() {
+        if (!mounted) return;
+        setState(() {
+          _dragOffset = _swipeAnimStart +
+              (_swipeAnimEnd - _swipeAnimStart) *
+                  _swipeAnimCurve.transform(_swipeAnimController.value);
+        });
+      });
+
     _initSession();
   }
 
-  Future<void> _initSession() async {
-    await _loadVerse(isFirst: true);
+    Future<void> _initSession() async {
+    // Show an INSTANT verse (no wait) — user sees text immediately
+    _showInstantVerse();
+
+    // Start session timer right away
     if (!widget.isFreeMode) {
       _sessionTimer = Timer.periodic(const Duration(seconds: 1), (_) {
         if (!mounted) return;
@@ -474,35 +479,133 @@ class _ZenSessionPageState extends State<_ZenSessionPage>
         }
       });
     }
+
+    // Preload next verse in background while user reads the instant one
     _preloadNextVerse();
+  }
+
+  // Instant local verse per theme — no API call, no wait
+  void _showInstantVerse() {
+    final localVerses = {
+      'PEACE': [
+        {'text': 'Peace I leave with you; my peace I give to you.', 'ref': 'John 14:27'},
+        {'text': 'Be still, and know that I am God.', 'ref': 'Psalm 46:10'},
+        {'text': 'The Lord gives strength to his people; the Lord blesses his people with peace.', 'ref': 'Psalm 29:11'},
+      ],
+      'HOPE': [
+        {'text': 'For I know the plans I have for you, declares the Lord.', 'ref': 'Jeremiah 29:11'},
+        {'text': 'But those who hope in the Lord will renew their strength.', 'ref': 'Isaiah 40:31'},
+        {'text': 'May the God of hope fill you with all joy and peace.', 'ref': 'Romans 15:13'},
+      ],
+      'REST': [
+        {'text': 'Come to me, all you who are weary and burdened, and I will give you rest.', 'ref': 'Matthew 11:28'},
+        {'text': 'He makes me lie down in green pastures; he leads me beside quiet waters.', 'ref': 'Psalm 23:2'},
+        {'text': 'In peace I will lie down and sleep, for you alone make me dwell in safety.', 'ref': 'Psalm 4:8'},
+      ],
+      'GRATITUDE': [
+        {'text': 'Give thanks to the Lord, for he is good; his love endures forever.', 'ref': 'Psalm 136:1'},
+        {'text': 'Every good and perfect gift is from above.', 'ref': 'James 1:17'},
+        {'text': 'Give thanks in all circumstances.', 'ref': '1 Thessalonians 5:18'},
+      ],
+      'STRENGTH': [
+        {'text': 'I can do all this through him who gives me strength.', 'ref': 'Philippians 4:13'},
+        {'text': 'The Lord is my strength and my shield; my heart trusts in him.', 'ref': 'Psalm 28:7'},
+        {'text': 'Be strong and courageous. Do not be afraid.', 'ref': 'Joshua 1:9'},
+      ],
+    };
+
+    final pool = localVerses[widget.theme] ?? localVerses['PEACE']!;
+    final chosen = pool[Random().nextInt(pool.length)];
+
+    if (!mounted) return;
+    setState(() {
+      _verseText = chosen['text']!;
+      _verseRef = chosen['ref']!;
+      _words = chosen['text']!.split(' ');
+      _revealedWords = 0;
+      _verseFullyRevealed = false;
+      _dragOffset = 0;
+      _isProcessing = false;
+    });
+
+    StatsService.recordVerse(chosen['text']!, chosen['ref']!);
+    _startWordReveal(chosen['text']!);
   }
 
   @override
   void dispose() {
     _sessionTimer?.cancel();
     _heartBurstController.dispose();
+    _swipeAnimController.dispose();
     TtsService.stop();
     super.dispose();
   }
 
   Color get _emotionAccent => ThemeService.getEmotionColor();
 
-  Future<void> _preloadNextVerse() async {
+    Future<void> _preloadNextVerse() async {
     if (_preloading) return;
     _preloading = true;
     try {
+      // Race against a 3-second timeout — if API is slow, fall back to local
       final result = await ApiService.getZenVerse(
         theme: widget.theme.toLowerCase(),
         emotion: AppController().currentEmotion,
-      );
-      _nextVerseText =
-          result['verse'] ?? 'The Lord is my shepherd, I lack nothing.';
-      _nextVerseRef = result['ref'] ?? 'Psalm 23:1';
+      ).timeout(const Duration(seconds: 3));
+
+      final newText = result['verse'] ?? '';
+      final newRef = result['ref'] ?? '';
+      // Only accept if it's a real verse AND different from current
+      if (newText.isNotEmpty && newText != _verseText) {
+        _nextVerseText = newText;
+        _nextVerseRef = newRef;
+      } else {
+        _useLocalFallback();
+      }
     } catch (e) {
-      _nextVerseText = 'The Lord is my shepherd, I lack nothing.';
-      _nextVerseRef = 'Psalm 23:1';
+      _useLocalFallback();
     }
     _preloading = false;
+  }
+
+  void _useLocalFallback() {
+    final localVerses = {
+      'PEACE': [
+        {'text': 'Peace I leave with you; my peace I give to you.', 'ref': 'John 14:27'},
+        {'text': 'Be still, and know that I am God.', 'ref': 'Psalm 46:10'},
+        {'text': 'You will keep in perfect peace those whose minds are steadfast.', 'ref': 'Isaiah 26:3'},
+      ],
+      'HOPE': [
+        {'text': 'For I know the plans I have for you, declares the Lord.', 'ref': 'Jeremiah 29:11'},
+        {'text': 'Those who hope in the Lord will renew their strength.', 'ref': 'Isaiah 40:31'},
+        {'text': 'Now faith is confidence in what we hope for.', 'ref': 'Hebrews 11:1'},
+      ],
+      'REST': [
+        {'text': 'Come to me, all you who are weary and burdened.', 'ref': 'Matthew 11:28'},
+        {'text': 'He makes me lie down in green pastures.', 'ref': 'Psalm 23:2'},
+        {'text': 'Return to your rest, my soul, for the Lord has been good to you.', 'ref': 'Psalm 116:7'},
+      ],
+      'GRATITUDE': [
+        {'text': 'Give thanks to the Lord, for he is good.', 'ref': 'Psalm 136:1'},
+        {'text': 'Every good and perfect gift is from above.', 'ref': 'James 1:17'},
+        {'text': 'Enter his gates with thanksgiving.', 'ref': 'Psalm 100:4'},
+      ],
+      'STRENGTH': [
+        {'text': 'I can do all this through him who gives me strength.', 'ref': 'Philippians 4:13'},
+        {'text': 'The Lord is my strength and my shield.', 'ref': 'Psalm 28:7'},
+        {'text': 'Be strong and courageous.', 'ref': 'Joshua 1:9'},
+      ],
+    };
+
+    final pool = localVerses[widget.theme] ?? localVerses['PEACE']!;
+    // Pick one that's NOT the current verse
+    final candidates = pool.where((v) => v['text'] != _verseText).toList();
+    final chosen = candidates.isNotEmpty
+        ? candidates[Random().nextInt(candidates.length)]
+        : pool[Random().nextInt(pool.length)];
+
+    _nextVerseText = chosen['text']!;
+    _nextVerseRef = chosen['ref']!;
   }
 
   Future<void> _loadVerse({bool isFirst = false}) async {
@@ -530,6 +633,7 @@ class _ZenSessionPageState extends State<_ZenSessionPage>
       }
     }
 
+    if (!mounted) return;
     setState(() {
       _verseText = verseText;
       _verseRef = verseRef;
@@ -537,7 +641,7 @@ class _ZenSessionPageState extends State<_ZenSessionPage>
       _revealedWords = 0;
       _verseFullyRevealed = false;
       _dragOffset = 0;
-      _actionTriggered = false;
+      _isProcessing = false; // Unlock input for new verse
     });
 
     StatsService.recordVerse(verseText, verseRef);
@@ -558,6 +662,7 @@ class _ZenSessionPageState extends State<_ZenSessionPage>
         setState(() => _revealedWords++);
         Future.delayed(const Duration(milliseconds: 320), revealNext);
       } else {
+        if (!mounted) return;
         setState(() {
           _verseFullyRevealed = true;
           _resonanceCount = 140 + Random().nextInt(40);
@@ -568,91 +673,79 @@ class _ZenSessionPageState extends State<_ZenSessionPage>
     revealNext();
   }
 
+  // ── Drag handlers — clean, single source of truth ──
   void _onDragStart(DragStartDetails details) {
-    if (_actionTriggered) return;
+    if (_isProcessing) return;
+    // Stop any running swipe animation so user can grab mid-flight
+    if (_swipeAnimController.isAnimating) {
+      _swipeAnimController.stop();
+    }
   }
 
   void _onDragUpdate(DragUpdateDetails details) {
-    if (_actionTriggered) return;
+    if (_isProcessing) return;
     setState(() {
       _dragOffset += details.delta.dx;
+      // Rubber-band resistance beyond threshold
       if (_dragOffset > _swipeThreshold) {
-        _dragOffset = _swipeThreshold + (_dragOffset - _swipeThreshold) * 0.25;
+        _dragOffset = _swipeThreshold + (_dragOffset - _swipeThreshold) * 0.35;
       } else if (_dragOffset < -_swipeThreshold) {
         _dragOffset =
-            -_swipeThreshold + (_dragOffset + _swipeThreshold) * 0.25;
+            -_swipeThreshold + (_dragOffset + _swipeThreshold) * 0.35;
       }
     });
   }
 
-  void _onDragEnd(DragEndDetails details) async {
-    if (_actionTriggered) return;
+  void _onDragEnd(DragEndDetails details) {
+    if (_isProcessing) return;
 
     final velocity = details.primaryVelocity ?? 0;
-
     final isFlickRight = velocity > _swipeVelocityThreshold;
     final isFlickLeft = velocity < -_swipeVelocityThreshold;
     final isDraggedRight = _dragOffset > _swipeThreshold;
     final isDraggedLeft = _dragOffset < -_swipeThreshold;
 
     if (isFlickRight || isDraggedRight) {
-      setState(() => _actionTriggered = true);
-      await _animateSwipeOut(toRight: true);
-      await _saveAndNext();
+      _triggerSwipe(toRight: true);
     } else if (isFlickLeft || isDraggedLeft) {
-      setState(() => _actionTriggered = true);
-      await _animateSwipeOut(toRight: false);
-      await _loadVerse();
+      _triggerSwipe(toRight: false);
     } else {
       _snapBack();
     }
   }
 
-  Future<void> _animateSwipeOut({required bool toRight}) async {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final target = toRight ? screenWidth * 1.5 : -screenWidth * 1.5;
-    const duration = Duration(milliseconds: 280);
-    final startOffset = _dragOffset;
-    final startTime = DateTime.now();
+  void _triggerSwipe({required bool toRight}) {
+    setState(() => _isProcessing = true);
 
-    await Future.doWhile(() async {
-      if (!mounted) return false;
-      final elapsed = DateTime.now().difference(startTime).inMilliseconds;
-      final t = (elapsed / duration.inMilliseconds).clamp(0.0, 1.0);
-      final curve = Curves.easeOut.transform(t);
-      setState(() =>
-          _dragOffset = startOffset + (target - startOffset) * curve);
-      if (t >= 1.0) return false;
-      await Future.delayed(const Duration(milliseconds: 16));
-      return true;
+    final screenWidth = MediaQuery.of(context).size.width;
+    _swipeAnimStart = _dragOffset;
+    _swipeAnimEnd = toRight ? screenWidth * 1.5 : -screenWidth * 1.5;
+    _swipeAnimCurve = Curves.easeOut;
+    _swipeAnimController.duration = const Duration(milliseconds: 280);
+
+    _swipeAnimController.forward(from: 0).then((_) async {
+      if (!mounted) return;
+      if (toRight) {
+        await _saveAndNext();
+      } else {
+        await _loadVerse();
+      }
     });
   }
 
   void _snapBack() {
-    final startOffset = _dragOffset;
-    final startTime = DateTime.now();
-    const duration = Duration(milliseconds: 300);
-
-    Future.doWhile(() async {
-      if (!mounted) return false;
-      final elapsed = DateTime.now().difference(startTime).inMilliseconds;
-      final t = (elapsed / duration.inMilliseconds).clamp(0.0, 1.0);
-      final curve = Curves.elasticOut.transform(t);
-      setState(() => _dragOffset = startOffset * (1 - curve));
-      if (t >= 1.0) {
-        setState(() => _dragOffset = 0);
-        return false;
-      }
-      await Future.delayed(const Duration(milliseconds: 16));
-      return true;
-    });
+    _swipeAnimStart = _dragOffset;
+    _swipeAnimEnd = 0;
+    _swipeAnimCurve = Curves.elasticOut;
+    _swipeAnimController.duration = const Duration(milliseconds: 400);
+    _swipeAnimController.forward(from: 0);
   }
 
   Future<void> _saveAndNext() async {
     setState(() => _showHeartBurst = true);
     _heartBurstController.forward(from: 0);
     StatsService.saveVerse(_verseText, _verseRef);
-    await Future.delayed(const Duration(milliseconds: 600));
+    await Future.delayed(const Duration(milliseconds: 500));
     if (mounted) setState(() => _showHeartBurst = false);
     await _loadVerse();
   }
@@ -679,10 +772,7 @@ class _ZenSessionPageState extends State<_ZenSessionPage>
       backgroundColor: AppTheme.bgDeep,
       body: Stack(
         children: [
-          // Cosmic dark background — persistent
           const Positioned.fill(child: LumineBackground()),
-
-          // Gold progress bar at top
           Positioned(
             top: 0,
             left: 0,
@@ -709,7 +799,6 @@ class _ZenSessionPageState extends State<_ZenSessionPage>
               ),
             ),
           ),
-
           SafeArea(
             child: Column(
               children: [
@@ -747,7 +836,6 @@ class _ZenSessionPageState extends State<_ZenSessionPage>
                     ],
                   ),
                 ),
-
                 Expanded(
                   child: Stack(
                     children: [
@@ -781,7 +869,6 @@ class _ZenSessionPageState extends State<_ZenSessionPage>
                           ),
                         ),
                       ),
-
                       // Save indicator (right)
                       Positioned(
                         right: 20,
@@ -812,8 +899,7 @@ class _ZenSessionPageState extends State<_ZenSessionPage>
                           ),
                         ),
                       ),
-
-                      // Verse card — draggable
+                      // Verse card
                       Center(
                         child: GestureDetector(
                           onHorizontalDragStart: _onDragStart,
@@ -832,7 +918,6 @@ class _ZenSessionPageState extends State<_ZenSessionPage>
                                     mainAxisAlignment:
                                         MainAxisAlignment.center,
                                     children: [
-                                      // Soft emotion aura behind verse
                                       Stack(
                                         alignment: Alignment.center,
                                         children: [
@@ -856,9 +941,7 @@ class _ZenSessionPageState extends State<_ZenSessionPage>
                                           _buildWordReveal(),
                                         ],
                                       ),
-
                                       const SizedBox(height: 32),
-
                                       if (_verseFullyRevealed &&
                                           _verseRef.isNotEmpty)
                                         Text(
@@ -870,9 +953,7 @@ class _ZenSessionPageState extends State<_ZenSessionPage>
                                             fontStyle: FontStyle.italic,
                                           ),
                                         ).animate().fadeIn(duration: 600.ms),
-
                                       const SizedBox(height: 48),
-
                                       if (_verseFullyRevealed)
                                         Row(
                                           mainAxisAlignment:
@@ -895,13 +976,11 @@ class _ZenSessionPageState extends State<_ZenSessionPage>
                                             ),
                                           ],
                                         ).animate().fadeIn(duration: 800.ms),
-
                                       const SizedBox(height: 24),
-
-                                                                            // Naked swipe hint — no pill
+                                      // Naked swipe hint — no pill
                                       if (_verseFullyRevealed &&
                                           _dragOffset == 0 &&
-                                          !_actionTriggered)
+                                          !_isProcessing)
                                         Row(
                                           mainAxisAlignment:
                                               MainAxisAlignment.center,
@@ -951,7 +1030,6 @@ class _ZenSessionPageState extends State<_ZenSessionPage>
                           ),
                         ),
                       ),
-
                       // Heart burst on save
                       if (_showHeartBurst)
                         Center(
