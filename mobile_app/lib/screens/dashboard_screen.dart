@@ -172,8 +172,21 @@ class _DashboardScreenState extends State<DashboardScreen>
     _startScriptureRotation();
     _startClock();
     _startLightningTimer();
+    _warmBackend();
   }
-
+  Future<void> _warmBackend() async {
+    try {
+      // Fire-and-forget — silently wakes Render
+      await ApiService.analyzeMessage(
+        'ping',
+        recentHistory: [],
+        memoryProfile: {},
+        appContext: {'current_emotion': 'calm'},
+        lastReplies: [],
+      ).timeout(const Duration(seconds: 45));
+    } catch (_) {}
+  }
+  
   void _startBioSimulation() {
     _bioTimer = Timer.periodic(const Duration(seconds: 5), (_) {
       if (!mounted) return;

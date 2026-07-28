@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:math';
 import 'dart:async';
-import 'dart:ui';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../services/app_controller.dart';
 import '../services/api_service.dart';
@@ -10,8 +8,8 @@ import '../services/voice_service.dart';
 import 'sacred_interruption_screen.dart';
 import '../services/tts_service.dart';
 import '../services/stats_service.dart';
-import '../services/theme_service.dart';
 import '../services/memory_service.dart';
+import '../services/app_theme.dart';
 import '../widgets/glow_orb.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -36,20 +34,19 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   bool _isListeningNow = false;
   bool _isSpeaking = false;
   bool _showKeyboard = false;
-    bool _hasStartedChat = false;
+  bool _hasStartedChat = false;
 
-  late AnimationController _bgController;
   late AnimationController _userPillController;
   late AnimationController _lumineReplyController;
 
-  String get _statusLine {
-    if (_isLoading) return 'Reflecting..';
+    String get _statusLine {
+    if (_isLoading) return 'Reading between your lines...';
     if (_isSpeaking) return 'Speaking..';
     if (_isListeningNow) return 'Listening..';
     return 'Shared presence';
   }
 
-    String _greetingText() {
+  String _greetingText() {
     final hour = DateTime.now().hour;
     const name = "Naren";
     if (hour < 12) return "Good morning, $name.\nHow are you feeling?";
@@ -61,11 +58,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-
-    _bgController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 25),
-    )..repeat();
 
     _userPillController = AnimationController(
       vsync: this,
@@ -89,6 +81,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     });
 
     _loadPersistedState();
+     _warmBackend();
   }
 
   Future<void> _loadPersistedState() async {
@@ -102,9 +95,23 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     }
   }
 
+  Future<void> _warmBackend() async {
+    try {
+      // Silent ping to wake Render's sleeping instance
+      await ApiService.analyzeMessage(
+        'hi',
+        recentHistory: [],
+        memoryProfile: {},
+        appContext: {'current_emotion': 'calm'},
+        lastReplies: [],
+      ).timeout(const Duration(seconds: 30));
+    } catch (_) {
+      // Silent — ignore all errors, this is just a warmup
+    }
+  }
+
   @override
   void dispose() {
-    _bgController.dispose();
     _userPillController.dispose();
     _lumineReplyController.dispose();
     _controller.dispose();
@@ -127,11 +134,16 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       _isLoading = true;
       _isListeningNow = false;
       _isSpeaking = false;
-     _hasStartedChat = true;
+      _hasStartedChat = true;
     });
     _userPillController.forward(from: 0);
     _controller.clear();
-
+// Show instant thinking indicator — user sees Lumíne respond immediately
+    setState(() {
+      _lumineReply = '...';
+      _isLoading = true;
+    });
+    _lumineReplyController.forward(from: 0);
     try {
       final now = DateTime.now();
       final hour = now.hour;
@@ -158,13 +170,13 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
       final lastReplies = await MemoryService.loadLastReplies();
 
-      final result = await ApiService.analyzeMessage(
+            final result = await ApiService.analyzeMessage(
         userMessage,
         recentHistory: _chatHistory,
         memoryProfile: _memoryProfile,
         appContext: appContext,
         lastReplies: lastReplies,
-      );
+      ).timeout(const Duration(seconds: 5));
 
       final emotion = result['emotion'] ?? 'neutral';
       final response = result['response'] ?? 'I am here with you.';
@@ -211,16 +223,56 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           ),
         );
       }
-    } catch (_) {
+       } catch (_) {
       if (mounted) {
         setState(() {
-          _lumineReply = 'Connection error. Try again in a moment.';
+          _lumineReply = _localFallbackReply(userMessage);
           _isLoading = false;
-          _isSpeaking = false;
+          _isSpeaking = true;
+        });
+        _lumineReplyController.forward(from: 0);
+        // Speak the fallback too
+        TtsService.speakWithCallback(_localFallbackReply(userMessage), 0.4, () {
+          if (mounted) setState(() => _isSpeaking = false);
         });
       }
     }
   }
+
+  // Local intelligent reply when backend is slow — never leave user hanging
+  String _localFallbackReply(String userMessage) {
+    final msg = userMessage.toLowerCase();
+
+    // Detect emotional keywords
+    if (msg.contains('sad') || msg.contains('crying') || msg.contains('hurt') || msg.contains('lonely')) {
+      return "I hear that weight in what you said. Tell me more — I'm here, unhurried.";
+    }
+    if (msg.contains('angry') || msg.contains('mad') || msg.contains('frustrated') || msg.contains('annoyed')) {
+      return "Something is asking to be heard beneath that anger. What actually happened?";
+    }
+    if (msg.contains('anxious') || msg.contains('worried') || msg.contains('scared') || msg.contains('afraid')) {
+      return "That kind of anxiety usually has a specific shape. What's the thought that keeps returning?";
+    }
+    if (msg.contains('tired') || msg.contains('exhausted') || msg.contains('burnt out') || msg.contains('drained')) {
+      return "There's tired, and then there's this kind of tired. When did you last really rest?";
+    }
+    if (msg.contains('grateful') || msg.contains('thankful') || msg.contains('blessed')) {
+      return "That's a rare thing to notice. What in particular is opening you up right now?";
+    }
+    if (msg.contains('happy') || msg.contains('good') || msg.contains('great')) {
+      return "Good is worth naming. What made today feel that way?";
+    }
+    if (msg.contains('lost') || msg.contains('confused') || msg.contains('stuck')) {
+      return "Feeling lost usually means you're standing at a real crossroads. What's the choice you're actually avoiding?";
+    }
+    if (msg.contains('why') || msg.contains('meaning') || msg.contains('purpose')) {
+      return "That's the question underneath most questions. What do you think you're actually looking for?";
+    }
+
+    // Generic thoughtful fallback
+    return "Say more. I'm listening.";
+  }
+  
 
   Future<void> _runBackgroundSummary() async {
     try {
@@ -271,7 +323,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       _isListeningNow = true;
       _showKeyboard = false;
       _keyboardFocus.unfocus();
-       _hasStartedChat = true; 
+      _hasStartedChat = true;
     });
 
     var finalText = '';
@@ -340,14 +392,16 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   void _showChatHistory() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-      ),
       builder: (_) => Container(
         height: MediaQuery.of(context).size.height * 0.75,
         padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: AppTheme.bgSlate,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+          border: Border.all(color: AppTheme.bgSlateGlow, width: 1),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -356,15 +410,15 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
               children: [
                 Text(
                   "Chat History",
-                  style: GoogleFonts.playfairDisplay(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFF1A1A1A),
+                  style: AppTheme.display(
+                    size: 24,
+                    color: AppTheme.textPrimary,
+                    weight: FontWeight.w600,
                   ),
                 ),
                 IconButton(
                   onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close_rounded, color: Color(0xFF1A1A1A)),
+                  icon: Icon(Icons.close_rounded, color: AppTheme.textSecondary),
                 ),
               ],
             ),
@@ -375,9 +429,9 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                       child: Text(
                         "No conversations yet.\nStart sharing with Lumíne.",
                         textAlign: TextAlign.center,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 14,
-                          color: const Color(0xFF1A1A1A).withOpacity(0.6),
+                        style: AppTheme.body(
+                          size: 14,
+                          color: AppTheme.textSecondary,
                           height: 1.6,
                         ),
                       ),
@@ -391,17 +445,22 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
+                              // User message — gold-tinted bubble
                               Container(
                                 padding: const EdgeInsets.all(16),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF1A1A1A),
+                                  color: AppTheme.goldMid.withOpacity(0.18),
                                   borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: AppTheme.goldMid.withOpacity(0.35),
+                                    width: 1,
+                                  ),
                                 ),
                                 child: Text(
                                   msg["user"] ?? "",
-                                  style: GoogleFonts.plusJakartaSans(
-                                    color: Colors.white,
-                                    fontSize: 14,
+                                  style: AppTheme.body(
+                                    color: AppTheme.textPrimary,
+                                    size: 14,
                                   ),
                                 ),
                               )
@@ -409,18 +468,24 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                                   .fadeIn(duration: 300.ms)
                                   .slideX(begin: 0.1, curve: Curves.easeOut),
                               const SizedBox(height: 8),
+                              // Lumíne reply — Literata
                               Container(
                                 padding: const EdgeInsets.all(16),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFF5F5F5),
+                                  color: AppTheme.bgSlateHigh,
                                   borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: AppTheme.bgSlateGlow,
+                                    width: 1,
+                                  ),
                                 ),
                                 child: Text(
                                   msg["lumine"] ?? "",
-                                  style: GoogleFonts.plusJakartaSans(
-                                    color: const Color(0xFF1A1A1A),
-                                    fontSize: 14,
-                                    height: 1.5,
+                                  style: AppTheme.verse(
+                                    color: AppTheme.textPrimary,
+                                    size: 15,
+                                    height: 1.6,
+                                    fontStyle: FontStyle.normal,
                                   ),
                                 ),
                               )
@@ -440,7 +505,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   }
 
   // ══════════════════════════════════════════════════════════════
-  // BUILD
+  // BUILD — KEEPS KEYBOARD FIX INTACT
   // ══════════════════════════════════════════════════════════════
 
   @override
@@ -458,20 +523,12 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       child: AnimatedBuilder(
         animation: AppController(),
         builder: (_, __) {
-          return Scaffold(
+                    return Scaffold(
             resizeToAvoidBottomInset: true,
-            backgroundColor: const Color(0xFFFDFBF3),
+            backgroundColor: Colors.transparent,
             body: Stack(
               children: [
-                // ─── Background — always full physical screen ───
-                Positioned.fill(
-  child: _AnimatedGradientBackground(
-    bgController: _bgController,
-    emotion: AppController().currentEmotion,
-  ),
-),
-
-                // ─── Foreground content ───
+                // Main content
                 GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: showingKeyboardBar ? _closeKeyboard : null,
@@ -481,23 +538,22 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                         const SizedBox(height: 12),
                         _buildHeader(),
                         SizedBox(height: showingKeyboardBar ? 16 : 32),
-                                                GlowOrb(
+                        GlowOrb(
                           size: showingKeyboardBar ? 130 : 220,
                           active: _isListeningNow || _isSpeaking,
                         ),
                         SizedBox(height: showingKeyboardBar ? 16 : 32),
 
-                        // ── Greeting text below orb (only when idle) ──
                         if (!_hasStartedChat && !showingKeyboardBar)
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 32),
                             child: Text(
                               _greetingText(),
                               textAlign: TextAlign.center,
-                              style: GoogleFonts.playfairDisplay(
-                                fontSize: 26,
-                                fontWeight: FontWeight.bold,
-                                color: const Color(0xFF0F0F0F),
+                              style: AppTheme.display(
+                                size: 26,
+                                color: AppTheme.textPrimary,
+                                weight: FontWeight.w600,
                                 height: 1.3,
                               ),
                             ),
@@ -529,7 +585,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                   ),
                 ),
 
-                // ─── Keyboard bar — full width, floats above keyboard ───
+                // Keyboard bar — positioned, no white background
                 if (showingKeyboardBar)
                   Positioned(
                     left: 20,
@@ -550,10 +606,10 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       children: [
         Text(
           'Reflect',
-          style: GoogleFonts.playfairDisplay(
-            fontSize: 28,
-            fontWeight: FontWeight.w600,
-            color: const Color(0xFF1A1A1A),
+          style: AppTheme.display(
+            size: 30,
+            color: AppTheme.textPrimary,
+            weight: FontWeight.w600,
           ),
         ),
         const SizedBox(height: 4),
@@ -561,11 +617,10 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           duration: const Duration(milliseconds: 300),
           child: Text(
             _statusLine,
-              
             key: ValueKey(_statusLine),
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 12,
-              color: const Color(0xFF1A1A1A).withOpacity(0.65),
+            style: AppTheme.body(
+              size: 13,
+              color: AppTheme.textSecondary,
             ),
           ),
         ),
@@ -581,6 +636,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // User pill — gold-tinted dark
             if (_livePartial.isNotEmpty || _lastUserMessage != null)
               AnimatedBuilder(
                 animation: _userPillController,
@@ -598,13 +654,17 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                         width: double.infinity,
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.92),
+                          color: AppTheme.bgSlate.withOpacity(0.85),
                           borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: AppTheme.goldMid.withOpacity(0.35),
+                            width: 1,
+                          ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
+                              color: AppTheme.goldMid.withOpacity(0.1),
                               blurRadius: 14,
-                              offset: const Offset(0, 4),
+                              spreadRadius: 1,
                             ),
                           ],
                         ),
@@ -612,9 +672,9 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                           _livePartial.isNotEmpty
                               ? _livePartial
                               : (_lastUserMessage ?? ''),
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 14,
-                            color: const Color(0xFF1A1A1A),
+                          style: AppTheme.body(
+                            size: 15,
+                            color: AppTheme.textPrimary,
                             fontStyle: _livePartial.isNotEmpty
                                 ? FontStyle.italic
                                 : FontStyle.normal,
@@ -627,6 +687,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
               ),
             if (_livePartial.isNotEmpty || _lastUserMessage != null)
               const SizedBox(height: 12),
+            // Lumíne reply pill — dark slate with gold border, Literata
             if (_lumineReply != null)
               AnimatedBuilder(
                 animation: _lumineReplyController,
@@ -644,13 +705,22 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                       opacity: t.clamp(0.0, 1.0),
                       child: Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.all(18),
+                        padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1A1A1A).withOpacity(0.92),
+                          color: AppTheme.bgSlateHigh,
                           borderRadius: BorderRadius.circular(22),
+                          border: Border.all(
+                            color: AppTheme.goldMid.withOpacity(0.5),
+                            width: 1.2,
+                          ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.28),
+                              color: AppTheme.goldMid.withOpacity(0.18),
+                              blurRadius: 20,
+                              spreadRadius: 1,
+                            ),
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.4),
                               blurRadius: 24,
                               offset: const Offset(0, 8),
                             ),
@@ -658,10 +728,11 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                         ),
                         child: Text(
                           _lumineReply!,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 15,
-                            color: Colors.white,
-                            height: 1.5,
+                          style: AppTheme.verse(
+                            size: 16,
+                            color: AppTheme.textPrimary,
+                            height: 1.6,
+                            fontStyle: FontStyle.normal,
                           ),
                         ),
                       ),
@@ -685,8 +756,11 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           _AnimatedDockButton(
             onTap: _showChatHistory,
             floatDelay: 0,
-            child: const Icon(Icons.history_rounded,
-                color: Color(0xFF1A1A1A), size: 22),
+            child: Icon(
+              Icons.history_rounded,
+              color: AppTheme.goldMid,
+              size: 22,
+            ),
           ),
           _MicButton(
             isListening: _isListeningNow,
@@ -695,8 +769,11 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           _AnimatedDockButton(
             onTap: _openKeyboard,
             floatDelay: 500,
-            child: const Icon(Icons.keyboard_outlined,
-                color: Color(0xFF1A1A1A), size: 22),
+            child: Icon(
+              Icons.keyboard_outlined,
+              color: AppTheme.goldMid,
+              size: 22,
+            ),
           ),
         ],
       ),
@@ -708,10 +785,14 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       width: double.infinity,
       child: Material(
         elevation: 12,
-        shadowColor: Colors.black38,
+        shadowColor: Colors.black54,
         borderRadius: BorderRadius.circular(28),
-        color: Colors.white,
-        child: Padding(
+        color: AppTheme.bgSlate,
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: AppTheme.bgSlateGlow, width: 1),
+          ),
           padding: const EdgeInsets.fromLTRB(16, 4, 8, 4),
           child: Row(
             children: [
@@ -719,16 +800,18 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                 child: TextField(
                   controller: _controller,
                   focusNode: _keyboardFocus,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 15,
-                    color: const Color(0xFF1A1A1A),
+                  style: AppTheme.body(
+                    size: 15,
+                    color: AppTheme.textPrimary,
                   ),
                   textInputAction: TextInputAction.send,
                   onSubmitted: (_) => _sendMessage(),
+                  cursorColor: AppTheme.goldMid,
                   decoration: InputDecoration(
                     hintText: "Share what you're feeling...",
-                    hintStyle: GoogleFonts.plusJakartaSans(
-                      color: const Color(0xFF1A1A1A).withOpacity(0.4),
+                    hintStyle: AppTheme.body(
+                      size: 15,
+                      color: AppTheme.textTertiary,
                     ),
                     border: InputBorder.none,
                   ),
@@ -736,8 +819,10 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
               ),
               IconButton(
                 onPressed: () => _sendMessage(),
-                icon: const Icon(Icons.arrow_upward_rounded,
-                    color: Color(0xFF1A1A1A)),
+                icon: Icon(
+                  Icons.arrow_upward_rounded,
+                  color: AppTheme.goldMid,
+                ),
               ),
             ],
           ),
@@ -748,256 +833,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 }
 
 // ══════════════════════════════════════════════════════════════════
-// IVORY BACKGROUND — uses physical screen size, immune to keyboard
-// ══════════════════════════════════════════════════════════════════
-class _AnimatedGradientBackground extends StatelessWidget {
-  final AnimationController bgController;
-  final String emotion;
-
-  const _AnimatedGradientBackground({
-    required this.bgController,
-    required this.emotion,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final view = View.of(context);
-    final w = view.physicalSize.width / view.devicePixelRatio;
-    final h = view.physicalSize.height / view.devicePixelRatio;
-
-    return RepaintBoundary(
-      child: OverflowBox(
-        minWidth: w,
-        maxWidth: w,
-        minHeight: h,
-        maxHeight: h,
-        alignment: Alignment.topLeft,
-        child: SizedBox(
-          width: w,
-          height: h,
-          child: AnimatedBuilder(
-            animation: bgController,
-            builder: (_, __) {
-              return CustomPaint(
-                painter: _IvoryDepthPainter(
-                  t: bgController.value * 2 * pi,
-                  emotion: emotion,
-                ),
-                size: Size(w, h),
-              );
-            },
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _IvoryDepthPainter extends CustomPainter {
-  final double t;
-  final String emotion;
-
-  _IvoryDepthPainter({required this.t, required this.emotion});
-
-  // ── Emotion-shifted ivory palette ──
-  // Each emotion has its own tinted ivory tones — cream stays dominant,
-  // but the whole paper feels different depending on mood.
-   static List<Color> _paletteFor(String emotion) {
-    switch (emotion) {
-      case 'calm':
-        return [
-          const Color(0xFFF6F9FC),
-          const Color(0xFFE8EEF5),
-          const Color(0xFFD9E3EE),
-          const Color(0xFFE5EDF3),
-        ];
-      case 'happy':
-        return [
-          const Color(0xFFFEFAEC),
-          const Color(0xFFF9EFCB),
-          const Color(0xFFEFD99A),
-          const Color(0xFFFAF3D6),
-        ];
-      case 'sad':
-        return [
-          const Color(0xFFF6F3F9),
-          const Color(0xFFEBE4F0),
-          const Color(0xFFD9CDE0),
-          const Color(0xFFEFEAF3),
-        ];
-      case 'angry':
-        return [
-          const Color(0xFFFDF3EE),
-          const Color(0xFFF8DFD1),
-          const Color(0xFFEBC1A8),
-          const Color(0xFFF9E5D8),
-        ];
-      case 'hopeful':
-        return [
-          const Color(0xFFF3FAFD),
-          const Color(0xFFDDEEF6),
-          const Color(0xFFBEDDEB),
-          const Color(0xFFE0EEF5),
-        ];
-      case 'anxious':
-        return [
-          const Color(0xFFF7F0FA),
-          const Color(0xFFECDCF3),
-          const Color(0xFFD5BEE3),
-          const Color(0xFFEEDFF4),
-        ];
-      case 'grateful':
-        return [
-          const Color(0xFFF3FAF4),
-          const Color(0xFFDCEEDF),
-          const Color(0xFFBCDCC0),
-          const Color(0xFFDEEFE1),
-        ];
-      case 'stressed':
-        return [
-          const Color(0xFFFDF5EA),
-          const Color(0xFFF8E5C7),
-          const Color(0xFFEDCB93),
-          const Color(0xFFFAECD3),
-        ];
-      case 'optimistic':
-        return [
-          const Color(0xFFFEFAE4),
-          const Color(0xFFFAEEB8),
-          const Color(0xFFF0DA80),
-          const Color(0xFFFCF3C9),
-        ];
-      case 'depressed':
-        return [
-          const Color(0xFFF2F3F6),
-          const Color(0xFFE2E5EB),
-          const Color(0xFFCACFDA),
-          const Color(0xFFE7EAEF),
-        ];
-      case 'crisis':
-        return [
-          const Color(0xFFFCEEED),
-          const Color(0xFFF8D5D2),
-          const Color(0xFFEBB1AC),
-          const Color(0xFFF9DDDA),
-        ];
-      case 'neutral':
-      default:
-        return [
-          const Color(0xFFFDFBF3),
-          const Color(0xFFF3EAD1),
-          const Color(0xFFE8DFC3),
-          const Color(0xFFEEF0F0),
-        ];
-    }
-  }
-  @override
-  void paint(Canvas canvas, Size size) {
-    final palette = _paletteFor(emotion);
-    final ivory = palette[0];
-    final ivoryWarm = palette[1];
-    final ivoryDeep = palette[2];
-    final ivoryCool = palette[3];
-
-    // ── Warm cream vertical gradient base ──
-    final base = LinearGradient(
-      begin: Alignment.topCenter,
-      end: Alignment.bottomCenter,
-      colors: [ivory, ivoryWarm, ivoryDeep],
-      stops: const [0.0, 0.55, 1.0],
-    );
-    canvas.drawRect(
-      Offset.zero & size,
-      Paint()..shader = base.createShader(Offset.zero & size),
-    );
-
-    // ── Soft radial vignette from top-left (warm light source) ──
-    final topLeftGlow = RadialGradient(
-      center: Alignment(-0.6 + sin(t * 0.4) * 0.05, -0.7),
-      radius: 1.3,
-      colors: [
-        Colors.white.withOpacity(0.55),
-        Colors.white.withOpacity(0.0),
-      ],
-    );
-    canvas.drawRect(
-      Offset.zero & size,
-      Paint()..shader = topLeftGlow.createShader(Offset.zero & size),
-    );
-
-    // ── Soft cool shadow from bottom-right (adds depth) ──
-    final bottomRightShade = RadialGradient(
-      center: Alignment(0.7 + cos(t * 0.35) * 0.05, 0.8),
-      radius: 1.3,
-      colors: [
-        ivoryCool.withOpacity(0.45),
-        ivoryCool.withOpacity(0.0),
-      ],
-    );
-    canvas.drawRect(
-      Offset.zero & size,
-      Paint()..shader = bottomRightShade.createShader(Offset.zero & size),
-    );
-
-    // ── Drifting warm blob (very subtle motion) ──
-    final blob1Center = Offset(
-      size.width * (0.25 + sin(t * 0.6) * 0.08),
-      size.height * (0.35 + cos(t * 0.5) * 0.06),
-    );
-    final blob1 = Paint()
-      ..color = ivoryWarm.withOpacity(0.35)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 100);
-    canvas.drawCircle(blob1Center, size.width * 0.5, blob1);
-
-    // ── Drifting cool blob ──
-    final blob2Center = Offset(
-      size.width * (0.75 + cos(t * 0.5) * 0.08),
-      size.height * (0.75 + sin(t * 0.4) * 0.06),
-    );
-    final blob2 = Paint()
-      ..color = ivoryCool.withOpacity(0.4)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 100);
-    canvas.drawCircle(blob2Center, size.width * 0.45, blob2);
-
-    // ── Very fine paper-like grain ──
-    final grainDark = Paint()..color = Colors.black.withOpacity(0.028);
-    final rng = Random(42);
-    for (int i = 0; i < 1200; i++) {
-      final x = rng.nextDouble() * size.width;
-      final y = rng.nextDouble() * size.height;
-      final r = rng.nextDouble() * 0.7 + 0.2;
-      canvas.drawCircle(Offset(x, y), r, grainDark);
-    }
-
-    final grainLight = Paint()..color = Colors.white.withOpacity(0.04);
-    final rng2 = Random(99);
-    for (int i = 0; i < 900; i++) {
-      final x = rng2.nextDouble() * size.width;
-      final y = rng2.nextDouble() * size.height;
-      final r = rng2.nextDouble() * 0.6 + 0.15;
-      canvas.drawCircle(Offset(x, y), r, grainLight);
-    }
-
-    // ── Subtle diagonal texture lines (very faint, gives paper feel) ──
-    final linePaint = Paint()
-      ..color = Colors.black.withOpacity(0.015)
-      ..strokeWidth = 0.5;
-    for (double y = 0; y < size.height; y += 4) {
-      final xOffset = sin(y * 0.02 + t * 0.5) * 3;
-      canvas.drawLine(
-        Offset(xOffset, y),
-        Offset(size.width + xOffset, y - 20),
-        linePaint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _IvoryDepthPainter old) =>
-      old.t != t || old.emotion != emotion;
-}
-// ══════════════════════════════════════════════════════════════════
-// DOCK BUTTONS
+// DOCK BUTTONS — dark slate with gold icons
 // ══════════════════════════════════════════════════════════════════
 class _AnimatedDockButton extends StatefulWidget {
   final Widget child;
@@ -1062,14 +898,23 @@ class _AnimatedDockButtonState extends State<_AnimatedDockButton>
                 scale: _pressed ? 0.9 : 1.0,
                 duration: const Duration(milliseconds: 150),
                 child: Container(
-                  width: 48,
-                  height: 48,
+                  width: 52,
+                  height: 52,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.white,
+                    color: AppTheme.bgSlate,
+                    border: Border.all(
+                      color: AppTheme.goldMid.withOpacity(0.4),
+                      width: 1,
+                    ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.16),
+                        color: AppTheme.goldMid.withOpacity(0.15),
+                        blurRadius: 16,
+                        spreadRadius: 1,
+                      ),
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.35),
                         blurRadius: 16,
                         offset: const Offset(0, 6),
                       ),
@@ -1086,6 +931,9 @@ class _AnimatedDockButtonState extends State<_AnimatedDockButton>
   }
 }
 
+// ══════════════════════════════════════════════════════════════════
+// MIC BUTTON — gold when idle, red when listening
+// ══════════════════════════════════════════════════════════════════
 class _MicButton extends StatefulWidget {
   final bool isListening;
   final VoidCallback onTap;
@@ -1128,6 +976,10 @@ class _MicButtonState extends State<_MicButton>
         final targetScale = widget.isListening ? 1.35 : 1.0;
         final targetLift = widget.isListening ? -18.0 : 0.0;
 
+        final baseColor = widget.isListening
+            ? const Color(0xFFE85D5D)
+            : AppTheme.goldMid;
+
         return AnimatedContainer(
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOutBack,
@@ -1143,21 +995,21 @@ class _MicButtonState extends State<_MicButton>
             },
             onTapCancel: () => setState(() => _pressed = false),
             child: Container(
-              width: 76,
-              height: 76,
+              width: 80,
+              height: 80,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: widget.isListening
-                    ? Colors.redAccent
-                    : const Color(0xFF1A1A1A),
+                color: baseColor,
                 boxShadow: [
                   BoxShadow(
-                    color: (widget.isListening
-                            ? Colors.redAccent
-                            : Colors.black)
-                        .withOpacity(widget.isListening ? 0.5 : 0.24),
-                    blurRadius: widget.isListening ? 32 : 20,
-                    spreadRadius: widget.isListening ? 6 : 2,
+                    color: baseColor.withOpacity(widget.isListening ? 0.6 : 0.4),
+                    blurRadius: widget.isListening ? 32 : 24,
+                    spreadRadius: widget.isListening ? 6 : 3,
+                    offset: const Offset(0, 6),
+                  ),
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.4),
+                    blurRadius: 18,
                     offset: const Offset(0, 8),
                   ),
                 ],
@@ -1166,8 +1018,8 @@ class _MicButtonState extends State<_MicButton>
                 widget.isListening
                     ? Icons.stop_rounded
                     : Icons.mic_none_rounded,
-                color: Colors.white,
-                size: 32,
+                color: widget.isListening ? Colors.white : AppTheme.bgDeep,
+                size: 34,
               ),
             ),
           ),

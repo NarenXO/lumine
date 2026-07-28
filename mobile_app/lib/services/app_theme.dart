@@ -36,7 +36,7 @@ class AppTheme {
   // FONTS — Cormorant Garamond (display) + Manrope (body)
   // ═══════════════════════════════════════════════════════════
   static TextStyle display({
-    double size = 36,
+    double size = 34,
     Color? color,
     FontWeight weight = FontWeight.w600,
     double letterSpacing = -0.5,
@@ -51,7 +51,7 @@ class AppTheme {
       );
 
   static TextStyle body({
-    double size = 17,
+    double size = 15,
     Color? color,
     FontWeight weight = FontWeight.w300,
     double letterSpacing = 0.2,
@@ -68,7 +68,7 @@ class AppTheme {
       );
 
   static TextStyle label({
-    double size = 14,
+    double size = 12,
     Color? color,
     FontWeight weight = FontWeight.w600,
     double letterSpacing = 1.8,
@@ -82,7 +82,7 @@ class AppTheme {
 
   /// Verse style — Literata, elegant readable serif for scripture
   static TextStyle verse({
-    double size = 17,
+    double size = 15,
     Color? color,
     FontWeight weight = FontWeight.w400,
     double height = 1.6,

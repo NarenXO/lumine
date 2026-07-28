@@ -423,7 +423,7 @@ class _ZenSessionPageState extends State<_ZenSessionPage>
   int _revealedWords = 0;
   bool _verseFullyRevealed = false;
   int _resonanceCount = 142;
-
+  int _revealSession = 0;
   int _sessionSeconds = 0;
 
   // ── Swipe state — refactored to use AnimationController ──
@@ -649,28 +649,44 @@ class _ZenSessionPageState extends State<_ZenSessionPage>
     _startWordReveal(verseText);
   }
 
-  void _startWordReveal(String verse) {
+   void _startWordReveal(String verse) {
+    final mySession = _revealSession;
     _words = verse.split(' ');
     _revealedWords = 0;
     _verseFullyRevealed = false;
 
+    // Fire TTS immediately (fires the API call to ElevenLabs)
     TtsService.speakSynced(verse, 0.35);
 
-    void revealNext() {
-      if (!mounted) return;
-      if (_revealedWords < _words.length) {
-        setState(() => _revealedWords++);
-        Future.delayed(const Duration(milliseconds: 320), revealNext);
-      } else {
-        if (!mounted) return;
-        setState(() {
-          _verseFullyRevealed = true;
-          _resonanceCount = 140 + Random().nextInt(40);
-        });
-      }
-    }
+    // Word reveal starts after ~1s to give ElevenLabs time to start playing
+    // Tune the delay based on word count and audio speed
+    final wordCount = _words.length;
+    final estimatedAudioDurationMs = (wordCount * 380).clamp(2000, 12000);
+    final perWordDelayMs = (estimatedAudioDurationMs / wordCount).round();
 
-    revealNext();
+    Future.delayed(const Duration(milliseconds: 900), () {
+      if (!mounted) return;
+      if (mySession != _revealSession) return;
+
+      void revealNext() {
+        if (!mounted) return;
+        if (mySession != _revealSession) return;
+
+        if (_revealedWords < _words.length) {
+          setState(() => _revealedWords++);
+          Future.delayed(Duration(milliseconds: perWordDelayMs), revealNext);
+        } else {
+          if (!mounted) return;
+          if (mySession != _revealSession) return;
+          setState(() {
+            _verseFullyRevealed = true;
+            _resonanceCount = 140 + Random().nextInt(40);
+          });
+        }
+      }
+
+      revealNext();
+    });
   }
 
   // ── Drag handlers — clean, single source of truth ──

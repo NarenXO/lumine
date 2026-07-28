@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'dart:math';
 import 'dart:async';
-import 'dart:ui';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../services/app_controller.dart';
 import '../services/api_service.dart';
 import '../services/theme_service.dart';
 import '../services/stats_service.dart';
+import '../services/app_theme.dart';
 import 'sacred_interruption_screen.dart';
 
 class HabitsScreen extends StatefulWidget {
@@ -19,8 +19,6 @@ class HabitsScreen extends StatefulWidget {
 
 class _HabitsScreenState extends State<HabitsScreen>
     with TickerProviderStateMixin {
-  // Controllers
-  late AnimationController _bgController;
   late AnimationController _waveformController;
   late AnimationController _ringController;
   late AnimationController _weatherController;
@@ -28,30 +26,25 @@ class _HabitsScreenState extends State<HabitsScreen>
   late AnimationController _pulseController;
   late AnimationController _sparkleController;
 
-  // Biometric state
   int _heartRate = 72;
   int _hrv = 42;
   int _steps = 4823;
   double _sleepHours = 7.2;
   double _stressScore = 0.18;
 
-  // Presence
   int _presenceScore = 72;
   int _bodyScore = 64;
   int _mindScore = 71;
   int _spiritScore = 82;
 
-  // Rhythm sliders (0-10)
   double _sleepQuality = 7.0;
   double _stressLevel = 4.0;
   double _socialEnergy = 6.0;
   double _dailyRest = 5.5;
 
-  // Analyze pill
   String _analyzeInsight = '';
   bool _analyzeLoading = false;
 
-  // Wearable
   bool _wearableActive = true;
   Timer? _bioTimer;
   DateTime? _lastSpike;
@@ -62,11 +55,6 @@ class _HabitsScreenState extends State<HabitsScreen>
   @override
   void initState() {
     super.initState();
-    _bgController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 25),
-    )..repeat();
-
     _waveformController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 4),
@@ -98,11 +86,26 @@ class _HabitsScreenState extends State<HabitsScreen>
     )..repeat();
 
     _startBioSim();
+        // Wake up backend silently in background — no user wait
+    _warmBackend();
   }
-
+  Future<void> _warmBackend() async {
+    try {
+      // Fire-and-forget ping to wake Render's sleeping instance
+      await ApiService.analyzeHabits(
+        sleep: 5,
+        stress: 5,
+        social: 5,
+        rest: 5,
+        heartRate: 72,
+        activityLevel: 0.3,
+      ).timeout(const Duration(seconds: 30));
+    } catch (_) {
+      // Silent — this is just a warmup, ignore all errors
+    }
+  }
   @override
   void dispose() {
-    _bgController.dispose();
     _waveformController.dispose();
     _ringController.dispose();
     _weatherController.dispose();
@@ -211,67 +214,57 @@ class _HabitsScreenState extends State<HabitsScreen>
       animation: AppController(),
       builder: (_, __) {
         return Scaffold(
-          backgroundColor: const Color(0xFFF5F8FC),
-          body: Stack(
-            children: [
-              Positioned.fill(
-                child: _MarbleBackground(
-                  bgController: _bgController,
-                  tint: ThemeService.getEmotionColor(),
-                ),
+          backgroundColor: Colors.transparent,
+          body: SafeArea(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 16),
+                  _buildHeader(),
+                  const SizedBox(height: 20),
+
+                  _buildWaveformCard()
+                      .animate()
+                      .fadeIn(duration: 500.ms)
+                      .slideY(begin: -0.15, curve: Curves.easeOut),
+                  const SizedBox(height: 14),
+
+                  _buildRingsCard()
+                      .animate()
+                      .fadeIn(delay: 100.ms, duration: 600.ms)
+                      .scale(begin: const Offset(0.95, 0.95), curve: Curves.easeOut),
+                  const SizedBox(height: 14),
+
+                  _buildWeatherCard()
+                      .animate()
+                      .fadeIn(delay: 200.ms, duration: 500.ms)
+                      .slideX(begin: 0.15, curve: Curves.easeOut),
+                  const SizedBox(height: 14),
+
+                  _buildGlooInsightCard()
+                      .animate()
+                      .fadeIn(delay: 300.ms, duration: 500.ms)
+                      .slideY(begin: 0.15, curve: Curves.easeOut),
+                  const SizedBox(height: 14),
+
+                  _buildWearableCard()
+                      .animate()
+                      .fadeIn(delay: 400.ms, duration: 500.ms)
+                      .slideX(begin: -0.15, curve: Curves.easeOut),
+                  const SizedBox(height: 14),
+
+                  _buildRhythmSlidersCard()
+                      .animate()
+                      .fadeIn(delay: 500.ms, duration: 600.ms)
+                      .slideY(begin: 0.2, curve: Curves.easeOut),
+
+                  const SizedBox(height: 120),
+                ],
               ),
-              SafeArea(
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 16),
-                      _buildHeader(),
-                      const SizedBox(height: 20),
-
-                      _buildWaveformCard()
-                          .animate()
-                          .fadeIn(duration: 500.ms)
-                          .slideY(begin: -0.15, curve: Curves.easeOut),
-                      const SizedBox(height: 14),
-
-                      _buildRingsCard()
-                          .animate()
-                          .fadeIn(delay: 100.ms, duration: 600.ms)
-                          .scale(begin: const Offset(0.95, 0.95), curve: Curves.easeOut),
-                      const SizedBox(height: 14),
-
-                      _buildWeatherCard()
-                          .animate()
-                          .fadeIn(delay: 200.ms, duration: 500.ms)
-                          .slideX(begin: 0.15, curve: Curves.easeOut),
-                      const SizedBox(height: 14),
-
-                      _buildGlooInsightCard()
-                          .animate()
-                          .fadeIn(delay: 300.ms, duration: 500.ms)
-                          .slideY(begin: 0.15, curve: Curves.easeOut),
-                      const SizedBox(height: 14),
-
-                      _buildWearableCard()
-                          .animate()
-                          .fadeIn(delay: 400.ms, duration: 500.ms)
-                          .slideX(begin: -0.15, curve: Curves.easeOut),
-                      const SizedBox(height: 14),
-
-                      _buildRhythmSlidersCard()
-                          .animate()
-                          .fadeIn(delay: 500.ms, duration: 600.ms)
-                          .slideY(begin: 0.2, curve: Curves.easeOut),
-
-                      const SizedBox(height: 120),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         );
       },
@@ -282,27 +275,28 @@ class _HabitsScreenState extends State<HabitsScreen>
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Naren's Rhythms",
-              style: GoogleFonts.playfairDisplay(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                color: const Color(0xFF0F0F0F),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Naren's Rhythms",
+                style: AppTheme.display(
+                  size: 30,
+                  color: AppTheme.textPrimary,
+                  weight: FontWeight.w600,
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              "Body, mind, spirit — all connected",
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 13,
-                color: const Color(0xFF0F0F0F).withOpacity(0.55),
-                fontWeight: FontWeight.w500,
+              const SizedBox(height: 4),
+              Text(
+                "Body, mind, spirit — all connected",
+                style: AppTheme.body(
+                  size: 13,
+                  color: AppTheme.textSecondary,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         AnimatedBuilder(
           animation: _pulseController,
@@ -310,34 +304,23 @@ class _HabitsScreenState extends State<HabitsScreen>
             return Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.85),
+                color: AppTheme.bgSlate,
                 borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppTheme.bgSlateGlow),
                 boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8),
+                  BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4)),
                 ],
               ),
               child: Row(
                 children: [
-                  Container(
-                    width: 6, height: 6,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF10B981),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF10B981).withOpacity(0.6 * _pulseController.value),
-                          blurRadius: 6,
-                        ),
-                      ],
-                    ),
-                  ),
+                  Icon(_timeIcon(), color: AppTheme.goldMid, size: 14),
                   const SizedBox(width: 6),
                   Text(
                     _formatTime(),
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF0F0F0F),
+                    style: AppTheme.body(
+                      size: 13,
+                      weight: FontWeight.w700,
+                      color: AppTheme.textPrimary,
                     ),
                   ),
                 ],
@@ -347,6 +330,12 @@ class _HabitsScreenState extends State<HabitsScreen>
         ),
       ],
     );
+  }
+
+  IconData _timeIcon() {
+    final h = DateTime.now().hour;
+    if (h >= 6 && h < 18) return Icons.wb_sunny_rounded;
+    return Icons.nightlight_round;
   }
 
   String _formatTime() {
@@ -361,10 +350,8 @@ class _HabitsScreenState extends State<HabitsScreen>
   // 1. LIVE WAVEFORM
   // ══════════════════════════════════════════════════════════════
   Widget _buildWaveformCard() {
-    return _BentoBox(
-      color: const Color(0xFFF0F4F8),
+    return _DarkBentoBox(
       patternPainter: _GridPatternPainter(t: _waveformController.value * 2 * pi),
-      isGlossy: false,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -374,11 +361,10 @@ class _HabitsScreenState extends State<HabitsScreen>
               const SizedBox(width: 10),
               Text(
                 "LIVE PULSE",
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
+                style: AppTheme.label(
+                  size: 12,
                   letterSpacing: 1.8,
-                  color: const Color(0xFF0F0F0F).withOpacity(0.55),
+                  color: AppTheme.textSecondary,
                 ),
               ),
               const Spacer(),
@@ -387,7 +373,7 @@ class _HabitsScreenState extends State<HabitsScreen>
                 suffix: ' BPM',
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
-                color: const Color(0xFF0F0F0F),
+                color: AppTheme.goldMid,
               ),
             ],
           ),
@@ -419,20 +405,17 @@ class _HabitsScreenState extends State<HabitsScreen>
   // 2. BIOMETRIC RINGS
   // ══════════════════════════════════════════════════════════════
   Widget _buildRingsCard() {
-    return _BentoBox(
-      color: const Color(0xFFFDFDFD),
+    return _DarkBentoBox(
       patternPainter: _RingEchoesPatternPainter(t: _ringController.value * 2 * pi),
-      isGlossy: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             "PRESENCE RINGS",
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
+            style: AppTheme.label(
+              size: 12,
               letterSpacing: 1.8,
-              color: const Color(0xFF0F0F0F).withOpacity(0.55),
+              color: AppTheme.textSecondary,
             ),
           ),
           const SizedBox(height: 16),
@@ -452,28 +435,14 @@ class _HabitsScreenState extends State<HabitsScreen>
                       rotation: _ringController.value * 2 * pi,
                       emotionColor: ThemeService.getEmotionColor(),
                     ),
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _AnimatedNumberText(
-                            value: _presenceScore.toDouble(),
-                            suffix: '%',
-                            fontSize: 46,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF0F0F0F),
-                            font: GoogleFonts.playfairDisplay,
-                          ),
-                          Text(
-                            'PRESENCE',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 2,
-                              color: const Color(0xFF0F0F0F).withOpacity(0.5),
-                            ),
-                          ),
-                        ],
+                   child: Center(
+                      child: _AnimatedNumberText(
+                        value: _presenceScore.toDouble(),
+                        suffix: '%',
+                        fontSize: 28,
+                        fontWeight: FontWeight.w300,
+                        color: AppTheme.goldMid,
+                        font: GoogleFonts.manrope,
                       ),
                     ),
                   );
@@ -510,11 +479,10 @@ class _HabitsScreenState extends State<HabitsScreen>
         const SizedBox(height: 4),
         Text(
           label,
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
+          style: AppTheme.label(
+            size: 11,
             letterSpacing: 1,
-            color: const Color(0xFF0F0F0F).withOpacity(0.6),
+            color: AppTheme.textSecondary,
           ),
         ),
         const SizedBox(height: 2),
@@ -542,20 +510,17 @@ class _HabitsScreenState extends State<HabitsScreen>
       hourMap[h] = e['emotion'] as String;
     }
 
-    return _BentoBox(
-      color: const Color(0xFFF5EFE4),
+    return _DarkBentoBox(
       patternPainter: _DiagonalShimmerPatternPainter(t: _weatherController.value * 2 * pi),
-      isGlossy: false,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             "TODAY'S EMOTIONAL WEATHER",
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
+            style: AppTheme.label(
+              size: 12,
               letterSpacing: 1.6,
-              color: const Color(0xFF0F0F0F).withOpacity(0.55),
+              color: AppTheme.textSecondary,
             ),
           ),
           const SizedBox(height: 14),
@@ -581,7 +546,7 @@ class _HabitsScreenState extends State<HabitsScreen>
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: isCurrent
-                              ? ThemeService.getEmotionColor().withOpacity(0.2)
+                              ? ThemeService.getEmotionColor().withOpacity(0.25)
                               : Colors.transparent,
                           border: isCurrent
                               ? Border.all(
@@ -596,7 +561,7 @@ class _HabitsScreenState extends State<HabitsScreen>
                                   width: 4,
                                   height: 4,
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF0F0F0F).withOpacity(0.15),
+                                    color: AppTheme.textTertiary,
                                     shape: BoxShape.circle,
                                   ),
                                 )
@@ -609,10 +574,10 @@ class _HabitsScreenState extends State<HabitsScreen>
                       const SizedBox(height: 6),
                       Text(
                         '$displayH $period',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 10,
-                          fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w500,
-                          color: const Color(0xFF0F0F0F).withOpacity(isCurrent ? 0.9 : 0.5),
+                        style: AppTheme.body(
+                          size: 10,
+                          weight: isCurrent ? FontWeight.w700 : FontWeight.w500,
+                          color: isCurrent ? AppTheme.textPrimary : AppTheme.textTertiary,
                         ),
                       ),
                     ],
@@ -630,10 +595,8 @@ class _HabitsScreenState extends State<HabitsScreen>
   // 4. WHAT YOUR BODY IS SAYING
   // ══════════════════════════════════════════════════════════════
   Widget _buildGlooInsightCard() {
-    return _BentoBox(
-      color: const Color(0xFFFAF4EC),
+    return _DarkBentoBox(
       patternPainter: _PulsingEyePatternPainter(t: _pulseController.value * 2 * pi),
-      isGlossy: false,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -645,7 +608,7 @@ class _HabitsScreenState extends State<HabitsScreen>
                   scale: 1.0 + sin(_pulseController.value * pi) * 0.08,
                   child: Icon(
                     Icons.remove_red_eye_rounded,
-                    color: const Color(0xFF0F0F0F).withOpacity(0.6),
+                    color: AppTheme.goldMid.withOpacity(0.8),
                     size: 20,
                   ),
                 ),
@@ -653,11 +616,10 @@ class _HabitsScreenState extends State<HabitsScreen>
               const SizedBox(width: 8),
               Text(
                 "WHAT YOUR BODY IS SAYING",
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
+                style: AppTheme.label(
+                  size: 12,
                   letterSpacing: 1.5,
-                  color: const Color(0xFF0F0F0F).withOpacity(0.55),
+                  color: AppTheme.textSecondary,
                 ),
               ),
             ],
@@ -665,11 +627,10 @@ class _HabitsScreenState extends State<HabitsScreen>
           const SizedBox(height: 14),
           Text(
             _bodyInsight(),
-            style: GoogleFonts.playfairDisplay(
-              fontSize: 16,
-              fontStyle: FontStyle.italic,
+            style: AppTheme.verse(
+              size: 16,
+              color: AppTheme.textPrimary,
               height: 1.6,
-              color: const Color(0xFF0F0F0F).withOpacity(0.85),
             ),
           ),
         ],
@@ -694,13 +655,11 @@ class _HabitsScreenState extends State<HabitsScreen>
   // 5. WEARABLE SYNC
   // ══════════════════════════════════════════════════════════════
   Widget _buildWearableCard() {
-    return _BentoBox(
-      color: const Color(0xFFEDF3F5),
+    return _DarkBentoBox(
       patternPainter: _RadarPatternPainter(
         t: _radarController.value * 2 * pi,
         active: _wearableActive,
       ),
-      isGlossy: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -717,7 +676,7 @@ class _HabitsScreenState extends State<HabitsScreen>
                       Icons.watch_rounded,
                       color: _wearableActive
                           ? const Color(0xFF10B981)
-                          : const Color(0xFF0F0F0F).withOpacity(0.4),
+                          : AppTheme.textTertiary,
                       size: 20,
                     ),
                   );
@@ -726,11 +685,10 @@ class _HabitsScreenState extends State<HabitsScreen>
               const SizedBox(width: 8),
               Text(
                 "WEARABLE SYNC",
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
+                style: AppTheme.label(
+                  size: 12,
                   letterSpacing: 1.8,
-                  color: const Color(0xFF0F0F0F).withOpacity(0.55),
+                  color: AppTheme.textSecondary,
                 ),
               ),
               const Spacer(),
@@ -743,10 +701,10 @@ class _HabitsScreenState extends State<HabitsScreen>
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.05),
+                  color: AppTheme.bgSlateHigh,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.smartphone_rounded, size: 18, color: Color(0xFF0F0F0F)),
+                child: Icon(Icons.smartphone_rounded, size: 18, color: AppTheme.textPrimary),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -755,19 +713,19 @@ class _HabitsScreenState extends State<HabitsScreen>
                   children: [
                     Text(
                       'Motorola Edge 60 Pro',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF0F0F0F),
+                      style: AppTheme.body(
+                        size: 14,
+                        weight: FontWeight.w600,
+                        color: AppTheme.textPrimary,
                       ),
                     ),
                     Text(
                       _wearableActive
                           ? 'Reading your body every 4s'
                           : 'Tap to connect Lumíne to your body',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 12,
-                        color: const Color(0xFF0F0F0F).withOpacity(0.55),
+                      style: AppTheme.body(
+                        size: 12,
+                        color: AppTheme.textSecondary,
                       ),
                     ),
                   ],
@@ -801,7 +759,7 @@ class _HabitsScreenState extends State<HabitsScreen>
                 child: _devButton(
                   'Reset',
                   Icons.refresh_rounded,
-                  const Color(0xFF6B7280),
+                  AppTheme.textSecondary,
                   _resetBio,
                 ),
               ),
@@ -826,7 +784,7 @@ class _HabitsScreenState extends State<HabitsScreen>
         decoration: BoxDecoration(
           color: _wearableActive
               ? const Color(0xFF10B981)
-              : const Color(0xFF0F0F0F).withOpacity(0.2),
+              : AppTheme.bgSlateGlow,
           borderRadius: BorderRadius.circular(20),
         ),
         child: AnimatedAlign(
@@ -854,9 +812,9 @@ class _HabitsScreenState extends State<HabitsScreen>
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withOpacity(0.12),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: color.withOpacity(0.25)),
+          border: Border.all(color: color.withOpacity(0.35)),
         ),
         child: Column(
           children: [
@@ -881,9 +839,9 @@ class _HabitsScreenState extends State<HabitsScreen>
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withOpacity(0.15),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: color.withOpacity(0.3)),
+          border: Border.all(color: color.withOpacity(0.4)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -892,9 +850,9 @@ class _HabitsScreenState extends State<HabitsScreen>
             const SizedBox(width: 6),
             Text(
               label,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
+              style: AppTheme.body(
+                size: 13,
+                weight: FontWeight.w700,
                 color: color,
               ),
             ),
@@ -908,38 +866,35 @@ class _HabitsScreenState extends State<HabitsScreen>
   // 6. DAILY RHYTHMS
   // ══════════════════════════════════════════════════════════════
   Widget _buildRhythmSlidersCard() {
-    return _BentoBox(
-      color: const Color(0xFFF0EEF7),
+    return _DarkBentoBox(
       patternPainter: _WaveLinesPatternPainter(t: _waveformController.value * 2 * pi),
-      isGlossy: false,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             "DAILY RHYTHMS",
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
+            style: AppTheme.label(
+              size: 12,
               letterSpacing: 1.8,
-              color: const Color(0xFF0F0F0F).withOpacity(0.55),
+              color: AppTheme.textSecondary,
             ),
           ),
           const SizedBox(height: 8),
           Text(
             "Move each slider — watch how you feel.",
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 13,
-              color: const Color(0xFF0F0F0F).withOpacity(0.55),
+            style: AppTheme.body(
+              size: 13,
+              color: AppTheme.textSecondary,
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
 
-          _rhythmSlider(
+                    _rhythmSlider(
             label: 'Sleep Quality',
             value: _sleepQuality,
             icon: Icons.bedtime_rounded,
             positive: true,
-            color: const Color(0xFF6366F1),
+            color: const Color(0xFF7BA9F0), // soft sky
             onChanged: (v) => setState(() => _sleepQuality = v),
           ),
           _rhythmSlider(
@@ -947,7 +902,7 @@ class _HabitsScreenState extends State<HabitsScreen>
             value: _stressLevel,
             icon: Icons.whatshot_rounded,
             positive: false,
-            color: const Color(0xFFE87A5F),
+            color: const Color(0xFFFF9B85), // warm coral
             onChanged: (v) => setState(() => _stressLevel = v),
           ),
           _rhythmSlider(
@@ -955,7 +910,7 @@ class _HabitsScreenState extends State<HabitsScreen>
             value: _socialEnergy,
             icon: Icons.people_rounded,
             positive: true,
-            color: const Color(0xFFF59E0B),
+            color: const Color(0xFFE9D08C), // sacred gold
             onChanged: (v) => setState(() => _socialEnergy = v),
           ),
           _rhythmSlider(
@@ -963,11 +918,11 @@ class _HabitsScreenState extends State<HabitsScreen>
             value: _dailyRest,
             icon: Icons.spa_rounded,
             positive: true,
-            color: const Color(0xFF10B981),
+            color: const Color(0xFF7DD69F), // mint sage
             onChanged: (v) => setState(() => _dailyRest = v),
           ),
 
-          const SizedBox(height: 28),
+          const SizedBox(height: 12),
 
           Center(
             child: SizedBox(
@@ -988,22 +943,22 @@ class _HabitsScreenState extends State<HabitsScreen>
             ),
           ),
 
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
 
           if (_analyzeInsight.isNotEmpty)
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.75),
+                color: AppTheme.bgSlateHigh,
                 borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: AppTheme.goldMid.withOpacity(0.3)),
               ),
               child: Text(
                 _analyzeInsight,
-                style: GoogleFonts.playfairDisplay(
-                  fontSize: 15,
-                  fontStyle: FontStyle.italic,
+                style: AppTheme.verse(
+                  size: 15,
+                  color: AppTheme.textPrimary,
                   height: 1.6,
-                  color: const Color(0xFF0F0F0F).withOpacity(0.85),
                 ),
               ),
             ).animate().fadeIn(duration: 500.ms),
@@ -1020,36 +975,51 @@ class _HabitsScreenState extends State<HabitsScreen>
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0F0F0F),
+                      color: AppTheme.goldMid,
                       borderRadius: BorderRadius.circular(22),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.25),
+                          color: AppTheme.goldMid.withOpacity(0.35),
                           blurRadius: glow,
                           spreadRadius: 1,
                         ),
                       ],
                     ),
-                    child: _analyzeLoading
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
+                                        child: _analyzeLoading
+                        ? Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                  color: AppTheme.bgDeep,
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                'Reading you...',
+                                style: AppTheme.body(
+                                  size: 13,
+                                  weight: FontWeight.w700,
+                                  color: AppTheme.bgDeep,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
                           )
                         : Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.insights_rounded, color: Colors.white, size: 16),
+                              Icon(Icons.insights_rounded, color: AppTheme.bgDeep, size: 16),
                               const SizedBox(width: 8),
                               Text(
                                 'Analyze Rhythm',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
+                                style: AppTheme.body(
+                                  size: 13,
+                                  weight: FontWeight.w700,
+                                  color: AppTheme.bgDeep,
                                   letterSpacing: 0.5,
                                 ),
                               ),
@@ -1088,7 +1058,7 @@ class _HabitsScreenState extends State<HabitsScreen>
     }
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1102,7 +1072,7 @@ class _HabitsScreenState extends State<HabitsScreen>
                     child: Container(
                       padding: const EdgeInsets.all(7),
                       decoration: BoxDecoration(
-                        color: color.withOpacity(0.15),
+                        color: color.withOpacity(0.2),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(icon, size: 16, color: color),
@@ -1113,10 +1083,10 @@ class _HabitsScreenState extends State<HabitsScreen>
               const SizedBox(width: 10),
               Text(
                 label,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF0F0F0F).withOpacity(0.85),
+                style: AppTheme.body(
+                  size: 15,
+                  weight: FontWeight.w600,
+                  color: AppTheme.textPrimary,
                 ),
               ),
               const Spacer(),
@@ -1130,14 +1100,14 @@ class _HabitsScreenState extends State<HabitsScreen>
                   key: ValueKey(descriptor),
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.18),
+                    color: color.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
                     descriptor,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
+                    style: AppTheme.body(
+                      size: 12,
+                      weight: FontWeight.w700,
                       color: color,
                       letterSpacing: 0.3,
                     ),
@@ -1145,7 +1115,7 @@ class _HabitsScreenState extends State<HabitsScreen>
                 ),
               ),
               const SizedBox(width: 8),
-                            Text(
+              Text(
                 value.toStringAsFixed(1),
                 style: GoogleFonts.spaceGrotesk(
                   fontSize: 22,
@@ -1170,19 +1140,15 @@ class _HabitsScreenState extends State<HabitsScreen>
 }
 
 // ══════════════════════════════════════════════════════════════════
-// SHARED BENTO BOX
+// DARK BENTO BOX — matches app-wide slate look
 // ══════════════════════════════════════════════════════════════════
-class _BentoBox extends StatelessWidget {
+class _DarkBentoBox extends StatelessWidget {
   final Widget child;
-  final Color color;
   final CustomPainter patternPainter;
-  final bool isGlossy;
 
-  const _BentoBox({
+  const _DarkBentoBox({
     required this.child,
-    required this.color,
     required this.patternPainter,
-    required this.isGlossy,
   });
 
   @override
@@ -1190,11 +1156,17 @@ class _BentoBox extends StatelessWidget {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: color,
+        color: AppTheme.bgSlate,
         borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppTheme.bgSlateGlow, width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: AppTheme.bgSlateGlow.withOpacity(0.5),
+            blurRadius: 24,
+            spreadRadius: 1,
+          ),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.35),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
@@ -1205,22 +1177,21 @@ class _BentoBox extends StatelessWidget {
         child: Stack(
           children: [
             Positioned.fill(child: CustomPaint(painter: patternPainter)),
-            if (isGlossy)
-              Positioned(
-                top: 0, left: 0, right: 0, height: 60,
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.white.withOpacity(0.4),
-                        Colors.white.withOpacity(0.0),
-                      ],
-                    ),
+            Positioned(
+              top: 0, left: 0, right: 0, height: 50,
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.white.withOpacity(0.03),
+                      Colors.transparent,
+                    ],
                   ),
                 ),
               ),
+            ),
             Padding(
               padding: const EdgeInsets.all(18),
               child: child,
@@ -1269,7 +1240,7 @@ class _AnimatedNumberText extends StatelessWidget {
         final display = value >= 100 || value.truncateToDouble() == value
             ? animatedValue.round().toString()
             : animatedValue.toStringAsFixed(1);
-        final style = (font ?? GoogleFonts.plusJakartaSans)(
+        final style = (font ?? GoogleFonts.manrope)(
           fontSize: fontSize,
           fontWeight: fontWeight,
           color: color,
@@ -1325,38 +1296,38 @@ class _AnimatedWeatherIcon extends StatelessWidget {
           case 'optimistic':
             return Transform.rotate(
               angle: t * 0.15,
-              child: const Icon(Icons.wb_sunny_rounded, color: Color(0xFFF59E0B), size: 24),
+              child: const Icon(Icons.wb_sunny_rounded, color: Color(0xFFFFD470), size: 24),
             );
           case 'sad':
           case 'depressed':
             return Transform.translate(
               offset: Offset(0, sin(t) * 2),
-              child: const Icon(Icons.grain_rounded, color: Color(0xFF64748B), size: 24),
+              child: const Icon(Icons.grain_rounded, color: Color(0xFFB8A0E8), size: 24),
             );
           case 'angry':
           case 'crisis':
             return Transform.translate(
               offset: Offset(sin(t * 3) * 1.5, 0),
-              child: const Icon(Icons.thunderstorm_rounded, color: Color(0xFFEF4444), size: 24),
+              child: const Icon(Icons.thunderstorm_rounded, color: Color(0xFFFF7C6B), size: 24),
             );
           case 'hopeful':
-            return const Icon(Icons.wb_twilight_rounded, color: Color(0xFF3B82F6), size: 24);
+            return const Icon(Icons.wb_twilight_rounded, color: Color(0xFF6BC5D9), size: 24);
           case 'anxious':
           case 'stressed':
             return Transform.translate(
               offset: Offset(cos(t) * 2, 0),
-              child: const Icon(Icons.air_rounded, color: Color(0xFF8B5CF6), size: 24),
+              child: const Icon(Icons.air_rounded, color: Color(0xFFC688F0), size: 24),
             );
           case 'grateful':
             return Transform.scale(
               scale: 0.95 + sin(t) * 0.08,
-              child: const Icon(Icons.filter_drama_rounded, color: Color(0xFF10B981), size: 24),
+              child: const Icon(Icons.filter_drama_rounded, color: Color(0xFF7DD69F), size: 24),
             );
           case 'calm':
           default:
             return Transform.translate(
               offset: Offset(sin(t * 0.5) * 1.5, 0),
-              child: const Icon(Icons.cloud_rounded, color: Color(0xFF7FB8D9), size: 24),
+              child: const Icon(Icons.cloud_rounded, color: Color(0xFF7BA9F0), size: 24),
             );
         }
       },
@@ -1488,7 +1459,7 @@ class _ExpressiveSliderState extends State<_ExpressiveSlider> {
                           width: 32,
                           height: 32,
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: AppTheme.bgSlate,
                             shape: BoxShape.circle,
                             border: Border.all(
                               color: widget.color,
@@ -1551,10 +1522,10 @@ class _WaveformPainter extends CustomPainter {
     final sharpness = 1.0 + stress * 3;
     final speed = 1.0 + stress * 0.5;
 
-    final lineColor = isFlashing ? const Color(0xFFEF4444) : color;
+    final lineColor = isFlashing ? const Color(0xFFFF7C6B) : color;
 
     final glowPaint = Paint()
-      ..color = lineColor.withOpacity(0.3)
+      ..color = lineColor.withOpacity(0.4)
       ..strokeWidth = 6
       ..style = PaintingStyle.stroke
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
@@ -1673,17 +1644,24 @@ class _MorphingFacePainter extends CustomPainter {
       )!;
     }
 
-    final baseRadius = w * 0.42;
-    final droop = mood < 0 ? -mood * 12 : 0.0;
-    final rounding = mood > 0 ? mood * 8 : 0.0;
+        final baseRadius = w * 0.42;
+    // Very subtle morph — no cuts on sides, always looks circular
+    final droop = mood < 0 ? -mood * 6 : 0.0;
+    final rounding = mood > 0 ? mood * 4 : 0.0;
 
     final facePath = Path();
-    const points = 60;
+    const points = 80;
     for (int i = 0; i <= points; i++) {
       final angle = (i / points) * 2 * pi;
-      final droopFactor = angle > 0 && angle < pi ? 0.0 : sin(angle) * droop;
-      final roundFactor = angle > pi ? 0.0 : (cos(angle) * rounding).abs();
-      final r = baseRadius + droopFactor + roundFactor;
+      // Smooth droop applied only to the very bottom (not sides)
+      final bottomDip = (angle > pi * 0.6 && angle < pi * 0.9)
+          ? sin((angle - pi * 0.6) / (pi * 0.3) * pi) * droop
+          : 0.0;
+      // Smooth round applied only to the very top (not sides)
+      final topLift = (angle > pi * 1.1 && angle < pi * 1.4)
+          ? sin((angle - pi * 1.1) / (pi * 0.3) * pi) * rounding
+          : 0.0;
+      final r = baseRadius + bottomDip + topLift;
       final x = center.dx + cos(angle) * r;
       final y = center.dy + sin(angle) * r;
       if (i == 0) {
@@ -1697,8 +1675,8 @@ class _MorphingFacePainter extends CustomPainter {
     canvas.drawPath(
       facePath,
       Paint()
-        ..color = Colors.black.withOpacity(0.1)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10),
+        ..color = Colors.black.withOpacity(0.25)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 14),
     );
 
     canvas.drawPath(facePath, Paint()..color = faceColor);
@@ -1720,9 +1698,9 @@ class _MorphingFacePainter extends CustomPainter {
       );
     }
 
-    final eyeY = center.dy - h * 0.08;
-    final eyeSpacing = w * 0.13;
-    final eyeSize = w * 0.045;
+       final eyeY = center.dy - h * 0.06;
+    final eyeSpacing = w * 0.14;
+    final eyeSize = w * 0.055; // bigger eyes = more kawaii
 
     if (mood > 0.5) {
       final eyeCurve = (mood - 0.5) * 2;
@@ -1749,21 +1727,29 @@ class _MorphingFacePainter extends CustomPainter {
         ..strokeCap = StrokeCap.round;
       canvas.drawPath(leftEyePath, eyePaint);
       canvas.drawPath(rightEyePath, eyePaint);
-    } else {
+        } else {
       final wideFactor = mood < 0 ? 1.0 + (-mood * 0.4) : 1.0;
       final eyePaint = Paint()..color = const Color(0xFF0F0F0F);
+      final highlightPaint = Paint()..color = Colors.white;
+
+      // Left eye — big black dot + tiny white highlight for shine
+      final leftEyeCenter = Offset(center.dx - eyeSpacing, eyeY);
+      canvas.drawCircle(leftEyeCenter, eyeSize * wideFactor, eyePaint);
       canvas.drawCircle(
-        Offset(center.dx - eyeSpacing, eyeY),
-        eyeSize * wideFactor,
-        eyePaint,
+        Offset(leftEyeCenter.dx - eyeSize * 0.3, leftEyeCenter.dy - eyeSize * 0.3),
+        eyeSize * 0.28,
+        highlightPaint,
       );
+
+      // Right eye — same
+      final rightEyeCenter = Offset(center.dx + eyeSpacing, eyeY);
+      canvas.drawCircle(rightEyeCenter, eyeSize * wideFactor, eyePaint);
       canvas.drawCircle(
-        Offset(center.dx + eyeSpacing, eyeY),
-        eyeSize * wideFactor,
-        eyePaint,
+        Offset(rightEyeCenter.dx - eyeSize * 0.3, rightEyeCenter.dy - eyeSize * 0.3),
+        eyeSize * 0.28,
+        highlightPaint,
       );
     }
-
     final browY = eyeY - h * 0.08;
     final browTilt = mood * 0.25;
     final browPaint = Paint()
@@ -1847,157 +1833,7 @@ class _MorphingFacePainter extends CustomPainter {
 }
 
 // ══════════════════════════════════════════════════════════════════
-// MARBLE BACKGROUND
-// ══════════════════════════════════════════════════════════════════
-class _MarbleBackground extends StatelessWidget {
-  final AnimationController bgController;
-  final Color tint;
-
-  const _MarbleBackground({required this.bgController, required this.tint});
-
-  @override
-  Widget build(BuildContext context) {
-    final view = View.of(context);
-    final w = view.physicalSize.width / view.devicePixelRatio;
-    final h = view.physicalSize.height / view.devicePixelRatio;
-
-    return RepaintBoundary(
-      child: OverflowBox(
-        minWidth: w, maxWidth: w,
-        minHeight: h, maxHeight: h,
-        alignment: Alignment.topLeft,
-        child: TweenAnimationBuilder<Color?>(
-          duration: const Duration(milliseconds: 2000),
-          curve: Curves.easeInOut,
-          tween: ColorTween(begin: tint, end: tint),
-          builder: (context, animatedTint, _) {
-            final blobColor = animatedTint ?? tint;
-            return AnimatedBuilder(
-              animation: bgController,
-              builder: (_, __) {
-                return CustomPaint(
-                  size: Size(w, h),
-                  painter: _BlobBackgroundPainter(
-                    t: bgController.value * 2 * pi,
-                    blobColor: blobColor,
-                  ),
-                );
-              },
-            );
-          },
-        ),
-      ),
-    );
-  }
-}
-
-class _BlobBackgroundPainter extends CustomPainter {
-  final double t;
-  final Color blobColor;
-
-  _BlobBackgroundPainter({required this.t, required this.blobColor});
-
-  // Derive a cream base from the blob color (soft complementary cream)
-  Color _creamFromBlob(Color blob) {
-    // Blend blob color heavily with cream to get a matching soft base
-    return Color.lerp(blob, const Color(0xFFFEF5D8), 0.8)!;
-  }
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final cream = _creamFromBlob(blobColor);
-
-    // Cream base
-    canvas.drawRect(Offset.zero & size, Paint()..color = cream);
-
-    final w = size.width;
-    final h = size.height;
-
-    final blobPaint = Paint()..color = blobColor;
-
-    // Big drifting organic blobs — 5 large shapes
-    _drawBlob(
-      canvas,
-      Offset(w * (0.15 + sin(t * 0.4) * 0.05), h * (0.1 + cos(t * 0.3) * 0.03)),
-      w * 0.5,
-      w * 0.4,
-      blobPaint,
-      t + 0.5,
-    );
-    _drawBlob(
-      canvas,
-      Offset(w * (0.85 + cos(t * 0.5) * 0.05), h * (0.25 + sin(t * 0.4) * 0.03)),
-      w * 0.45,
-      w * 0.55,
-      blobPaint,
-      t + 1.2,
-    );
-    _drawBlob(
-      canvas,
-      Offset(w * (0.5 + sin(t * 0.3) * 0.06), h * (0.55 + cos(t * 0.4) * 0.04)),
-      w * 0.65,
-      w * 0.55,
-      blobPaint,
-      t + 2.1,
-    );
-    _drawBlob(
-      canvas,
-      Offset(w * (0.15 + cos(t * 0.45) * 0.05), h * (0.85 + sin(t * 0.3) * 0.03)),
-      w * 0.5,
-      w * 0.45,
-      blobPaint,
-      t + 3.4,
-    );
-    _drawBlob(
-      canvas,
-      Offset(w * (0.85 + sin(t * 0.35) * 0.05), h * (0.9 + cos(t * 0.5) * 0.03)),
-      w * 0.55,
-      w * 0.5,
-      blobPaint,
-      t + 4.0,
-    );
-
-    // Tiny accent dot floating
-    canvas.drawCircle(
-      Offset(w * (0.65 + sin(t * 0.6) * 0.04), h * (0.42 + cos(t * 0.4) * 0.02)),
-      w * 0.035,
-      blobPaint,
-    );
-  }
-
-  void _drawBlob(
-    Canvas canvas,
-    Offset center,
-    double radiusX,
-    double radiusY,
-    Paint paint,
-    double phase,
-  ) {
-    // Organic wobbly ellipse using bezier
-    final path = Path();
-    const points = 20;
-    for (int i = 0; i <= points; i++) {
-      final angle = (i / points) * 2 * pi;
-      final wobble = sin(angle * 3 + phase) * 12 + cos(angle * 2 + phase * 0.7) * 8;
-      final x = center.dx + cos(angle) * (radiusX + wobble);
-      final y = center.dy + sin(angle) * (radiusY + wobble);
-      if (i == 0) {
-        path.moveTo(x, y);
-      } else {
-        path.lineTo(x, y);
-      }
-    }
-    path.close();
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _BlobBackgroundPainter old) =>
-      old.t != t || old.blobColor != blobColor;
-}
-
-// ══════════════════════════════════════════════════════════════════
-// PATTERN PAINTERS
+// PATTERN PAINTERS — visible on dark
 // ══════════════════════════════════════════════════════════════════
 
 class _GridPatternPainter extends CustomPainter {
@@ -2005,7 +1841,7 @@ class _GridPatternPainter extends CustomPainter {
   _GridPatternPainter({required this.t});
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = Colors.black.withOpacity(0.04);
+    final paint = Paint()..color = Colors.white.withOpacity(0.04);
     for (double x = 0; x < size.width; x += 12) {
       canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint..strokeWidth = 0.5);
     }
@@ -2024,7 +1860,7 @@ class _RingEchoesPatternPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final paint = Paint()
-      ..color = Colors.black.withOpacity(0.03)
+      ..color = Colors.white.withOpacity(0.03)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.8;
     for (int i = 1; i <= 8; i++) {
@@ -2041,7 +1877,7 @@ class _DiagonalShimmerPatternPainter extends CustomPainter {
   _DiagonalShimmerPatternPainter({required this.t});
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = Colors.black.withOpacity(0.035)..strokeWidth = 0.6;
+    final paint = Paint()..color = Colors.white.withOpacity(0.035)..strokeWidth = 0.6;
     for (double x = -size.height; x < size.width; x += 16) {
       final shift = sin(t + x * 0.02) * 4;
       canvas.drawLine(
@@ -2062,7 +1898,7 @@ class _PulsingEyePatternPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width * 0.85, size.height * 0.5);
     final paint = Paint()
-      ..color = Colors.black.withOpacity(0.04)
+      ..color = Colors.white.withOpacity(0.04)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.8;
     for (int i = 1; i <= 5; i++) {
@@ -2082,7 +1918,7 @@ class _RadarPatternPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width * 0.85, size.height * 0.3);
     final ringPaint = Paint()
-      ..color = Colors.black.withOpacity(0.04)
+      ..color = Colors.white.withOpacity(0.04)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.6;
     for (int i = 1; i <= 5; i++) {
@@ -2095,7 +1931,7 @@ class _RadarPatternPainter extends CustomPainter {
           endAngle: t + pi / 3,
           colors: [
             const Color(0xFF10B981).withOpacity(0.0),
-            const Color(0xFF10B981).withOpacity(0.15),
+            const Color(0xFF10B981).withOpacity(0.2),
           ],
         ).createShader(Rect.fromCircle(center: center, radius: 130));
       canvas.drawCircle(center, 130, sweepPaint);
@@ -2110,7 +1946,7 @@ class _WaveLinesPatternPainter extends CustomPainter {
   _WaveLinesPatternPainter({required this.t});
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = Colors.black.withOpacity(0.03)..strokeWidth = 0.6;
+    final paint = Paint()..color = Colors.white.withOpacity(0.03)..strokeWidth = 0.6;
     for (double y = 20; y < size.height; y += 20) {
       final path = Path();
       path.moveTo(0, y);
