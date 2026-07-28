@@ -1,16 +1,14 @@
 import 'package:flutter/material.dart';
 import 'dart:math';
 import 'dart:async';
-import 'dart:ui';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../services/app_controller.dart';
 import '../services/stats_service.dart';
 import '../services/theme_service.dart';
-import '../services/notification_service.dart';
-import '../services/calendar_service.dart';
 import '../services/memory_service.dart';
 import '../services/app_theme.dart';
+import '../widgets/lumine_background.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -21,12 +19,22 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen>
     with TickerProviderStateMixin {
-    late AnimationController _bgController;
   late AnimationController _pulseController;
   late AnimationController _shimmerController;
   late AnimationController _floatController;
   late AnimationController _petalRotateController;
-  // Settings state
+
+  static const Color _calm = Color(0xFF7BA9F0);
+  static const Color _happy = Color(0xFFFFD470);
+  static const Color _sad = Color(0xFFB8A0E8);
+  static const Color _angry = Color(0xFFFF7C6B);
+  static const Color _hopeful = Color(0xFF6BC5D9);
+  static const Color _anxious = Color(0xFFC688F0);
+  static const Color _grateful = Color(0xFF7DD69F);
+  static const Color _stressed = Color(0xFFFFA560);
+  static const Color _optimistic = Color(0xFFFFDF80);
+  static const Color _depressed = Color(0xFF8FA0B8);
+
   String _preferredTone = 'warm';
   String _translation = 'NIV';
   bool _voiceEnabled = true;
@@ -34,7 +42,6 @@ class _ProfileScreenState extends State<ProfileScreen>
   TimeOfDay _quietStart = const TimeOfDay(hour: 22, minute: 0);
   TimeOfDay _quietEnd = const TimeOfDay(hour: 7, minute: 0);
 
-  // Sacred practices
   bool _morningVerse = true;
   bool _eveningReflection = false;
   bool _sundayReview = true;
@@ -43,13 +50,9 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   bool _calendarConnected = false;
 
-    @override
+  @override
   void initState() {
     super.initState();
-    _bgController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 30),
-    )..repeat();
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
@@ -68,9 +71,8 @@ class _ProfileScreenState extends State<ProfileScreen>
     )..repeat();
   }
 
-    @override
+  @override
   void dispose() {
-    _bgController.dispose();
     _pulseController.dispose();
     _shimmerController.dispose();
     _floatController.dispose();
@@ -78,47 +80,68 @@ class _ProfileScreenState extends State<ProfileScreen>
     super.dispose();
   }
 
-  // Determine identity based on top emotion
-  Map<String, dynamic> _getIdentity() {
-    final emotion = StatsService.getMostFrequentEmotion();
-    switch (emotion) {
-      case 'calm':
-        return {'label': 'SEEKER OF STILLNESS', 'emoji': '🕊', 'color': const Color(0xFF7B2CBF)};
-      case 'happy':
-      case 'optimistic':
-        return {'label': 'BEARER OF LIGHT', 'emoji': '☀', 'color': const Color(0xFFF77F00)};
-      case 'sad':
-      case 'depressed':
-        return {'label': 'GENTLE HEART', 'emoji': '🌙', 'color': const Color(0xFF3A0CA3)};
-      case 'angry':
-        return {'label': 'WARRIOR OF PEACE', 'emoji': '🔥', 'color': const Color(0xFFD62828)};
-      case 'grateful':
-        return {'label': 'STEADY WALKER', 'emoji': '🌿', 'color': const Color(0xFF006D77)};
-      case 'stressed':
-      case 'anxious':
-        return {'label': 'STORM RIDER', 'emoji': '⛈', 'color': const Color(0xFF264653)};
-      case 'hopeful':
-        return {'label': 'BRIGHT SOUL', 'emoji': '✨', 'color': const Color(0xFF7209B7)};
-      default:
-        return {'label': 'SEEKER OF STILLNESS', 'emoji': '🕊', 'color': const Color(0xFF7B2CBF)};
+  Color _emotionAccent(String e) {
+    switch (e) {
+      case 'calm': return _calm;
+      case 'happy': return _happy;
+      case 'sad': return _sad;
+      case 'angry': return _angry;
+      case 'hopeful': return _hopeful;
+      case 'anxious': return _anxious;
+      case 'grateful': return _grateful;
+      case 'stressed': return _stressed;
+      case 'optimistic': return _optimistic;
+      case 'depressed': return _depressed;
+      default: return _calm;
     }
   }
+
+  IconData _getIdentityIcon(String emotion) {
+    switch (emotion) {
+      case 'calm': return Icons.spa;
+      case 'happy':
+      case 'optimistic': return Icons.wb_sunny;
+      case 'sad':
+      case 'depressed': return Icons.nights_stay;
+      case 'angry': return Icons.shield;
+      case 'grateful': return Icons.favorite_border;
+      case 'stressed':
+      case 'anxious': return Icons.air;
+      case 'hopeful': return Icons.star_border;
+      default: return Icons.spa;
+    }
+  }
+
+  String _getIdentityLabel(String emotion) {
+    switch (emotion) {
+      case 'calm': return 'SEEKER OF STILLNESS';
+      case 'happy':
+      case 'optimistic': return 'BEARER OF LIGHT';
+      case 'sad':
+      case 'depressed': return 'GENTLE HEART';
+      case 'angry': return 'WARRIOR OF PEACE';
+      case 'grateful': return 'STEADY WALKER';
+      case 'stressed':
+      case 'anxious': return 'STORM RIDER';
+      case 'hopeful': return 'BRIGHT SOUL';
+      default: return 'SEEKER OF STILLNESS';
+    }
+  }
+
+  String _capitalize(String s) =>
+      s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
 
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: AppController(),
       builder: (_, __) {
+        final emotionColor = ThemeService.getEmotionColor();
         return Scaffold(
-          backgroundColor: const Color(0xFFFDF6E8),
+          backgroundColor: AppTheme.bgDeep,
           body: Stack(
             children: [
-              Positioned.fill(
-                child: _BlobBackground(
-                  bgController: _bgController,
-                  tint: ThemeService.getEmotionColor(),
-                ),
-              ),
+              const Positioned.fill(child: LumineBackground()),
               SafeArea(
                 child: SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
@@ -127,7 +150,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                     children: [
                       _buildTopBar(),
                       const SizedBox(height: 10),
-                      _buildSoulSignatureCard()
+                      _buildSoulSignatureCard(emotionColor)
                           .animate()
                           .fadeIn(duration: 600.ms)
                           .slideY(begin: -0.15, curve: Curves.easeOutBack),
@@ -181,7 +204,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                           .animate()
                           .fadeIn(delay: 1000.ms, duration: 600.ms)
                           .slideY(begin: 0.2, curve: Curves.easeOut),
-                      const SizedBox(height: 60),
+                      const SizedBox(height: 120),
                     ],
                   ),
                 ),
@@ -209,22 +232,29 @@ class _ProfileScreenState extends State<ProfileScreen>
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppTheme.bgSlate,
                 shape: BoxShape.circle,
+                border: Border.all(color: AppTheme.borderSoft),
                 boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 12, offset: const Offset(0, 4)),
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.3),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
                 ],
               ),
-              child: const Icon(Icons.arrow_back_rounded, color: Color(0xFF0F0F0F), size: 22),
+              child: Icon(Icons.arrow_back_rounded,
+                  color: AppTheme.textPrimary, size: 22),
             ),
           ),
           const Spacer(),
           Text(
             'You',
-            style: GoogleFonts.playfairDisplay(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: const Color(0xFF0F0F0F),
+            style: GoogleFonts.cormorantGaramond(
+              fontSize: 26,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textPrimary,
+              letterSpacing: 0.5,
             ),
           ),
           const Spacer(),
@@ -234,24 +264,24 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  // ══════════════════════════════════════════════════════════════
-  // 1. SOUL SIGNATURE HERO (violet)
-  // ══════════════════════════════════════════════════════════════
-    Widget _buildSoulSignatureCard() {
-    final identity = _getIdentity();
+  // ═══════════════════════════════════════════════════════════
+  // 1. SOUL SIGNATURE
+  // ═══════════════════════════════════════════════════════════
+  Widget _buildSoulSignatureCard(Color emotionColor) {
+    final emotion = StatsService.getMostFrequentEmotion();
+    final label = _getIdentityLabel(emotion);
+    final icon = _getIdentityIcon(emotion);
     final daysActive = StatsService.streakDays;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: _BentoBox(
-        color: const Color(0xFF7B2CBF),
-        patternPainter: _FlourishPattern(t: _shimmerController.value * 2 * pi),
+      child: _ProfileBentoBox(
+        accentColor: emotionColor,
         child: SizedBox(
           width: double.infinity,
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              // Original warm cream face
               AnimatedBuilder(
                 animation: _pulseController,
                 builder: (_, __) {
@@ -262,7 +292,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.white.withOpacity(0.3 + sin(_pulseController.value * pi) * 0.15),
+                          color: emotionColor.withOpacity(
+                              0.3 + sin(_pulseController.value * pi) * 0.15),
                           blurRadius: 30,
                           spreadRadius: 6,
                         ),
@@ -276,14 +307,13 @@ class _ProfileScreenState extends State<ProfileScreen>
                   );
                 },
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 20),
               Text(
                 'Naren Rakesh',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.playfairDisplay(
+                style: GoogleFonts.cormorantGaramond(
                   fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textPrimary,
                 ),
               ),
               const SizedBox(height: 4),
@@ -291,26 +321,26 @@ class _ProfileScreenState extends State<ProfileScreen>
                 width: 180,
                 height: 20,
                 child: CustomPaint(
-                  painter: _FlourishLinePainter(t: _shimmerController.value),
+                  painter: _ProfileFlourishLinePainter(
+                      t: _shimmerController.value),
                 ),
               ),
               const SizedBox(height: 12),
               Text(
                 'Walking since July 2025 · $daysActive days',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.plusJakartaSans(
+                style: GoogleFonts.manrope(
                   fontSize: 13,
-                  color: Colors.white.withOpacity(0.75),
-                  fontWeight: FontWeight.w500,
+                  color: AppTheme.textSecondary,
+                  fontWeight: FontWeight.w400,
                 ),
               ),
               const SizedBox(height: 18),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.18),
+                  color: emotionColor.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.white.withOpacity(0.3)),
+                  border: Border.all(color: emotionColor.withOpacity(0.35)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -318,21 +348,21 @@ class _ProfileScreenState extends State<ProfileScreen>
                     AnimatedBuilder(
                       animation: _floatController,
                       builder: (_, __) => Transform.translate(
-                        offset: Offset(0, sin(_floatController.value * pi) * 3),
-                        child: Text(
-                          identity['emoji'] as String,
-                          style: const TextStyle(fontSize: 20),
+                        offset: Offset(0, sin(_floatController.value * pi) * 4),
+                        child: Transform.rotate(
+                          angle: sin(_floatController.value * pi) * 0.15,
+                          child: Icon(icon, color: emotionColor, size: 22),
                         ),
                       ),
                     ),
                     const SizedBox(width: 10),
                     Text(
-                      identity['label'] as String,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 12,
+                      label,
+                      style: GoogleFonts.manrope(
+                        fontSize: 11,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 1.5,
-                        color: Colors.white,
+                        color: emotionColor,
                       ),
                     ),
                   ],
@@ -344,9 +374,10 @@ class _ProfileScreenState extends State<ProfileScreen>
       ),
     );
   }
-  // ══════════════════════════════════════════════════════════════
-  // 2. GROWTH MILESTONES (ruby red)
-  // ══════════════════════════════════════════════════════════════
+
+  // ═══════════════════════════════════════════════════════════
+  // 2. GROWTH MILESTONES
+  // ═══════════════════════════════════════════════════════════
   Widget _buildMilestonesCard() {
     final streak = StatsService.streakDays;
     final verses = StatsService.versesReceived;
@@ -356,33 +387,24 @@ class _ProfileScreenState extends State<ProfileScreen>
     final fingerprintReady = StatsService.glooFingerprint.isNotEmpty;
 
     final milestones = [
-      {'label': 'First Week', 'icon': '🌱', 'unlocked': streak >= 7, 'req': '7 days'},
-      {'label': '30 Days', 'icon': '🕊', 'unlocked': streak >= 30, 'req': '30 days'},
-      {'label': '100 Verses', 'icon': '📖', 'unlocked': verses >= 100, 'req': '100 verses'},
-      {'label': 'First Pause', 'icon': '🌙', 'unlocked': interruptions >= 1, 'req': 'First interruption'},
-      {'label': 'Fingerprint', 'icon': '✨', 'unlocked': fingerprintReady, 'req': '5+ interactions'},
-      {'label': '7-Day Streak', 'icon': '🔥', 'unlocked': streak >= 7, 'req': '7-day streak'},
-      {'label': '30-Day Streak', 'icon': '💫', 'unlocked': streak >= 30, 'req': '30-day streak'},
-      {'label': 'First Verse', 'icon': '📿', 'unlocked': savedCount >= 1, 'req': 'Save 1 verse'},
-      {'label': 'Soul Map', 'icon': '🎯', 'unlocked': interactions >= 5, 'req': 'First soul map'},
-      {'label': 'First Zen', 'icon': '🌊', 'unlocked': verses >= 3, 'req': 'Zen session'},
+      {'label': 'First Week', 'icon': Icons.spa, 'unlocked': streak >= 7},
+      {'label': '30 Days', 'icon': Icons.self_improvement, 'unlocked': streak >= 30},
+      {'label': '100 Verses', 'icon': Icons.menu_book_rounded, 'unlocked': verses >= 100},
+      {'label': 'First Pause', 'icon': Icons.pause_circle_outline, 'unlocked': interruptions >= 1},
+      {'label': 'Fingerprint', 'icon': Icons.fingerprint, 'unlocked': fingerprintReady},
+      {'label': '7-Day Streak', 'icon': Icons.whatshot, 'unlocked': streak >= 7},
+      {'label': '30-Day Streak', 'icon': Icons.auto_awesome, 'unlocked': streak >= 30},
+      {'label': 'First Verse', 'icon': Icons.bookmark_added, 'unlocked': savedCount >= 1},
+      {'label': 'Soul Map', 'icon': Icons.map_outlined, 'unlocked': interactions >= 5},
+      {'label': 'First Zen', 'icon': Icons.waves, 'unlocked': verses >= 3},
     ];
 
-    return _BentoBox(
-      color: const Color(0xFFD62828),
-      patternPainter: _DiagonalStarburstPattern(t: _shimmerController.value * 2 * pi),
+    return _ProfileBentoBox(
+      accentColor: AppTheme.goldMid,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'GROWTH MILESTONES',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.8,
-              color: Colors.white.withOpacity(0.7),
-            ),
-          ),
+          _sectionLabel('GROWTH MILESTONES'),
           const SizedBox(height: 16),
           SizedBox(
             height: 110,
@@ -392,53 +414,67 @@ class _ProfileScreenState extends State<ProfileScreen>
               itemBuilder: (context, i) {
                 final m = milestones[i];
                 final unlocked = m['unlocked'] as bool;
+                final icon = m['icon'] as IconData;
+
                 return Padding(
                   padding: const EdgeInsets.only(right: 12),
                   child: AnimatedBuilder(
                     animation: _pulseController,
                     builder: (_, __) {
-                      final glow = unlocked
-                          ? 0.4 + sin(_pulseController.value * pi) * 0.2
-                          : 0.0;
                       return Container(
                         width: 82,
                         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
                         decoration: BoxDecoration(
                           color: unlocked
-                              ? Colors.white.withOpacity(0.2)
-                              : Colors.white.withOpacity(0.05),
+                              ? AppTheme.goldMid.withOpacity(0.1)
+                              : AppTheme.bgSlateHigh,
                           borderRadius: BorderRadius.circular(18),
                           border: Border.all(
-                            color: Colors.white.withOpacity(unlocked ? 0.4 : 0.15),
-                            width: 1,
+                            color: unlocked
+                                ? AppTheme.goldMid.withOpacity(0.4 + _pulseController.value * 0.2)
+                                : AppTheme.borderSoft,
                           ),
-                          boxShadow: [
-                            if (unlocked)
-                              BoxShadow(
-                                color: Colors.white.withOpacity(glow),
-                                blurRadius: 16,
-                                spreadRadius: 2,
-                              ),
-                          ],
+                          boxShadow: unlocked
+                              ? [
+                                  BoxShadow(
+                                    color: AppTheme.goldMid.withOpacity(0.15 + _pulseController.value * 0.1),
+                                    blurRadius: 12,
+                                    spreadRadius: 1,
+                                  ),
+                                ]
+                              : null,
                         ),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Opacity(
-                              opacity: unlocked ? 1.0 : 0.4,
-                              child: Text(
-                                m['icon'] as String,
-                                style: const TextStyle(fontSize: 28),
-                              ),
+                            AnimatedBuilder(
+                              animation: _floatController,
+                              builder: (_, __) {
+                                final bounce = unlocked
+                                    ? sin(_floatController.value * pi + i * 0.5) * 3
+                                    : 0.0;
+                                return Transform.translate(
+                                  offset: Offset(0, bounce),
+                                  child: Icon(
+                                    icon,
+                                    size: 28,
+                                    color: unlocked
+                                        ? AppTheme.goldMid
+                                        : AppTheme.textTertiary,
+                                  ),
+                                );
+                              },
                             ),
                             const SizedBox(height: 6),
                             Text(
                               m['label'] as String,
                               textAlign: TextAlign.center,
-                              style: GoogleFonts.plusJakartaSans(
+                              style: GoogleFonts.manrope(
                                 fontSize: 9,
                                 fontWeight: FontWeight.w700,
-                                color: Colors.white.withOpacity(unlocked ? 0.95 : 0.5),
+                                color: unlocked
+                                    ? AppTheme.goldMid
+                                    : AppTheme.textTertiary,
                                 height: 1.2,
                               ),
                             ),
@@ -456,60 +492,38 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  // ══════════════════════════════════════════════════════════════
-  // 3. INTERVENTION HISTORY (saffron)
-  // ══════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════
+  // 3. INTERVENTION HISTORY
+  // ═══════════════════════════════════════════════════════════
   Widget _buildInterventionHistoryCard() {
-    return _BentoBox(
-      color: const Color(0xFFF77F00),
-      patternPainter: _GridDotsPattern(t: _shimmerController.value * 2 * pi),
+    return _ProfileBentoBox(
+      accentColor: _stressed,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'INTERVENTION HISTORY',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.8,
-              color: Colors.white.withOpacity(0.7),
-            ),
-          ),
+          _sectionLabel('INTERVENTION HISTORY'),
           const SizedBox(height: 16),
-          // 2x2 grid — spacious, big icons, big numbers
           Row(
             children: [
               Expanded(child: _statBox(
-                Icons.pause_circle_outline_rounded,
-                'Interruptions',
-                StatsService.sacredInterruptions,
-                const Color(0xFFFFCFA1),
-              )),
+                  Icons.pause_circle_outline_rounded, 'Interruptions',
+                  StatsService.sacredInterruptions, _calm)),
               const SizedBox(width: 12),
               Expanded(child: _statBox(
-                Icons.auto_stories_rounded,
-                'Delivered',
-                StatsService.versesReceived,
-                const Color(0xFFFFDEBA),
-              )),
+                  Icons.auto_stories_rounded, 'Delivered',
+                  StatsService.versesReceived, _hopeful)),
             ],
           ),
           const SizedBox(height: 12),
           Row(
             children: [
               Expanded(child: _statBox(
-                Icons.insights_rounded,
-                'Patterns',
-                StatsService.habitsChecked,
-                const Color(0xFFFFEACB),
-              )),
+                  Icons.insights_rounded, 'Patterns',
+                  StatsService.habitsChecked, _anxious)),
               const SizedBox(width: 12),
               Expanded(child: _statBox(
-                Icons.favorite_rounded,
-                'Saved',
-                StatsService.savedVerses.length,
-                const Color(0xFFFFBB88),
-              )),
+                  Icons.favorite_rounded, 'Saved',
+                  StatsService.savedVerses.length, _grateful)),
             ],
           ),
         ],
@@ -517,33 +531,41 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  Widget _statBox(IconData icon, String label, int count, Color chipColor) {
+  Widget _statBox(IconData icon, String label, int count, Color accentColor) {
     return AnimatedBuilder(
       animation: _pulseController,
       builder: (_, __) {
         return Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.15),
+            color: AppTheme.bgSlateHigh,
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: Colors.white.withOpacity(0.25)),
+            border: Border.all(color: AppTheme.borderSoft),
           ),
           child: Column(
             children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: chipColor,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: chipColor.withOpacity(0.5),
-                      blurRadius: 10 + sin(_pulseController.value * pi) * 4,
-                      spreadRadius: 1,
+              AnimatedBuilder(
+                animation: _floatController,
+                builder: (_, __) {
+                  return Transform.translate(
+                    offset: Offset(0, sin(_floatController.value * pi) * 2),
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: accentColor.withOpacity(0.15),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: accentColor.withOpacity(0.2 + _pulseController.value * 0.15),
+                            blurRadius: 12,
+                            spreadRadius: 1,
+                          ),
+                        ],
+                      ),
+                      child: Icon(icon, color: accentColor, size: 22),
                     ),
-                  ],
-                ),
-                child: Icon(icon, color: const Color(0xFF7A3600), size: 22),
+                  );
+                },
               ),
               const SizedBox(height: 10),
               TweenAnimationBuilder<double>(
@@ -553,10 +575,10 @@ class _ProfileScreenState extends State<ProfileScreen>
                 builder: (context, v, __) {
                   return Text(
                     v.round().toString(),
-                    style: GoogleFonts.playfairDisplay(
+                    style: GoogleFonts.cormorantGaramond(
                       fontSize: 30,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textPrimary,
                     ),
                   );
                 },
@@ -564,11 +586,11 @@ class _ProfileScreenState extends State<ProfileScreen>
               const SizedBox(height: 4),
               Text(
                 label,
-                style: GoogleFonts.plusJakartaSans(
+                style: GoogleFonts.manrope(
                   fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white.withOpacity(0.85),
-                  letterSpacing: 0.5,
+                  fontWeight: FontWeight.w500,
+                  color: AppTheme.textSecondary,
+                  letterSpacing: 0.3,
                 ),
               ),
             ],
@@ -578,44 +600,32 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  // ══════════════════════════════════════════════════════════════
-  // 4. SACRED PRACTICES (teal)
-  // ══════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════
+  // 4. SACRED PRACTICES
+  // ═══════════════════════════════════════════════════════════
   Widget _buildSacredPracticesCard() {
-    return _BentoBox(
-      color: const Color(0xFF006D77),
-      patternPainter: _ConcentricArcsPattern(t: _shimmerController.value * 2 * pi),
+    return _ProfileBentoBox(
+      accentColor: _grateful,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'SACRED PRACTICES',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.8,
-              color: Colors.white.withOpacity(0.7),
-            ),
-          ),
-          const SizedBox(height: 8),
+          _sectionLabel('SACRED PRACTICES'),
+          const SizedBox(height: 6),
           Text(
             'Commit to the rhythms that hold you.',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 12,
-              color: Colors.white.withOpacity(0.6),
-            ),
+            style: GoogleFonts.manrope(fontSize: 12, color: AppTheme.textSecondary),
           ),
           const SizedBox(height: 18),
-          _practiceRow(Icons.wb_sunny_rounded, 'Morning Verse', _morningVerse,
-              (v) => setState(() => _morningVerse = v)),
-          _practiceRow(Icons.nights_stay_rounded, 'Evening Reflection', _eveningReflection,
-              (v) => setState(() => _eveningReflection = v)),
-          _practiceRow(Icons.calendar_today_rounded, 'Sunday Soul Review', _sundayReview,
-              (v) => setState(() => _sundayReview = v)),
-          _practiceRow(Icons.pause_circle_outline_rounded, 'Sacred Interruptions', _sacredInterruptions,
-              (v) => setState(() => _sacredInterruptions = v)),
-          _practiceRow(Icons.spa_rounded, 'Zen Mode Reminder', _zenReminder,
-              (v) => setState(() => _zenReminder = v)),
+          _practiceRow(Icons.wb_sunny_rounded, 'Morning Verse',
+              _morningVerse, (v) => setState(() => _morningVerse = v)),
+          _practiceRow(Icons.nights_stay_rounded, 'Evening Reflection',
+              _eveningReflection, (v) => setState(() => _eveningReflection = v)),
+          _practiceRow(Icons.calendar_today_rounded, 'Sunday Soul Review',
+              _sundayReview, (v) => setState(() => _sundayReview = v)),
+          _practiceRow(Icons.pause_circle_outline_rounded, 'Sacred Interruptions',
+              _sacredInterruptions, (v) => setState(() => _sacredInterruptions = v)),
+          _practiceRow(Icons.spa_rounded, 'Zen Mode Reminder',
+              _zenReminder, (v) => setState(() => _zenReminder = v)),
         ],
       ),
     );
@@ -623,45 +633,45 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   Widget _practiceRow(IconData icon, String label, bool value, ValueChanged<bool> onChanged) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 14),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
+              color: AppTheme.bgSlateHigh,
               shape: BoxShape.circle,
+              border: Border.all(color: AppTheme.borderSoft),
             ),
-            child: Icon(icon, size: 16, color: Colors.white),
+            child: Icon(icon, size: 16, color: AppTheme.textSecondary),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               label,
-              style: GoogleFonts.plusJakartaSans(
+              style: GoogleFonts.manrope(
                 fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
+                fontWeight: FontWeight.w500,
+                color: AppTheme.textPrimary,
               ),
             ),
           ),
-          _MiniToggle(value: value, onChanged: onChanged),
+          _ProfileMiniToggle(value: value, onChanged: onChanged),
         ],
       ),
     );
   }
 
-  // ══════════════════════════════════════════════════════════════
-  // 5. WEEKLY SOUL REPORT (slate)
-  // ══════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════
+  // 5. WEEKLY SOUL REPORT
+  // ═══════════════════════════════════════════════════════════
   Widget _buildWeeklyReportCard() {
     final topEmotion = StatsService.getMostFrequentEmotion();
     final versesWeek = StatsService.versesReceived;
     final interruptsWeek = StatsService.sacredInterruptions;
 
-    return _BentoBox(
-      color: const Color(0xFF264653),
-      patternPainter: _WaveLinesPattern(t: _shimmerController.value * 2 * pi),
+    return _ProfileBentoBox(
+      accentColor: _calm,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -671,28 +681,21 @@ class _ProfileScreenState extends State<ProfileScreen>
                 animation: _floatController,
                 builder: (_, __) => Transform.translate(
                   offset: Offset(0, sin(_floatController.value * pi) * 2),
-                  child: const Icon(Icons.summarize_rounded, color: Colors.white, size: 20),
+                  child: Icon(Icons.summarize_rounded,
+                      color: AppTheme.goldMid, size: 18),
                 ),
               ),
               const SizedBox(width: 8),
-              Text(
-                'THIS WEEK',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.8,
-                  color: Colors.white.withOpacity(0.7),
-                ),
-              ),
+              _sectionLabel('THIS WEEK'),
             ],
           ),
           const SizedBox(height: 16),
           Text(
             'You carried ${_capitalize(topEmotion)} most often.',
-            style: GoogleFonts.playfairDisplay(
-              fontSize: 20,
+            style: GoogleFonts.cormorantGaramond(
+              fontSize: 22,
               fontWeight: FontWeight.w600,
-              color: Colors.white,
+              color: AppTheme.textPrimary,
               height: 1.4,
             ),
           ),
@@ -700,9 +703,9 @@ class _ProfileScreenState extends State<ProfileScreen>
           Row(
             children: [
               Expanded(child: _reportStat('Verses', versesWeek, Icons.menu_book_rounded)),
-              Container(width: 1, height: 40, color: Colors.white.withOpacity(0.2)),
+              Container(width: 1, height: 40, color: AppTheme.borderSoft),
               Expanded(child: _reportStat('Pauses', interruptsWeek, Icons.pause_rounded)),
-              Container(width: 1, height: 40, color: Colors.white.withOpacity(0.2)),
+              Container(width: 1, height: 40, color: AppTheme.borderSoft),
               Expanded(child: _reportStat('Days', StatsService.streakDays, Icons.today_rounded)),
             ],
           ),
@@ -714,7 +717,13 @@ class _ProfileScreenState extends State<ProfileScreen>
   Widget _reportStat(String label, int value, IconData icon) {
     return Column(
       children: [
-        Icon(icon, color: Colors.white.withOpacity(0.7), size: 16),
+        AnimatedBuilder(
+          animation: _floatController,
+          builder: (_, __) => Transform.translate(
+            offset: Offset(0, sin(_floatController.value * pi) * 1.5),
+            child: Icon(icon, color: AppTheme.textSecondary, size: 16),
+          ),
+        ),
         const SizedBox(height: 6),
         TweenAnimationBuilder<double>(
           duration: const Duration(milliseconds: 1200),
@@ -722,19 +731,19 @@ class _ProfileScreenState extends State<ProfileScreen>
           tween: Tween<double>(begin: 0, end: value.toDouble()),
           builder: (context, v, __) => Text(
             v.round().toString(),
-            style: GoogleFonts.playfairDisplay(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
+            style: GoogleFonts.cormorantGaramond(
+              fontSize: 24,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textPrimary,
             ),
           ),
         ),
         Text(
           label,
-          style: GoogleFonts.plusJakartaSans(
+          style: GoogleFonts.manrope(
             fontSize: 10,
-            fontWeight: FontWeight.w600,
-            color: Colors.white.withOpacity(0.6),
+            fontWeight: FontWeight.w500,
+            color: AppTheme.textSecondary,
             letterSpacing: 0.5,
           ),
         ),
@@ -742,37 +751,25 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  // ══════════════════════════════════════════════════════════════
-  // 6. VERSES VAULT (magenta)
-  // ══════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════
+  // 6. VERSES VAULT
+  // ═══════════════════════════════════════════════════════════
   Widget _buildVersesVaultCard() {
     final saved = StatsService.savedVerses;
 
-    return _BentoBox(
-      color: const Color(0xFF7209B7),
-      patternPainter: _SparkleScatterPattern(t: _shimmerController.value * 2 * pi),
+    return _ProfileBentoBox(
+      accentColor: _hopeful,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Text(
-                'VERSES VAULT',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.8,
-                  color: Colors.white.withOpacity(0.7),
-                ),
-              ),
+              _sectionLabel('VERSES VAULT'),
               const Spacer(),
               Text(
                 '${saved.length} collected',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white.withOpacity(0.5),
-                ),
+                style: GoogleFonts.manrope(
+                    fontSize: 11, fontWeight: FontWeight.w500, color: AppTheme.textTertiary),
               ),
             ],
           ),
@@ -781,18 +778,30 @@ class _ProfileScreenState extends State<ProfileScreen>
             height: 160,
             child: saved.isEmpty
                 ? Center(
-                    child: Text(
-                      'Your saved verses will appear here.\nSwipe right on any verse to save.',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 12,
-                        color: Colors.white.withOpacity(0.55),
-                        height: 1.6,
-                      ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        AnimatedBuilder(
+                          animation: _floatController,
+                          builder: (_, __) => Transform.translate(
+                            offset: Offset(0, sin(_floatController.value * pi) * 4),
+                            child: Icon(Icons.bookmark_border_rounded,
+                                color: AppTheme.textTertiary, size: 32),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          'Your saved verses will appear here.\nSwipe right on any verse to save.',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.manrope(
+                            fontSize: 12, color: AppTheme.textTertiary, height: 1.6,
+                          ),
+                        ),
+                      ],
                     ),
                   )
                 : PageView.builder(
-                    controller: PageController(viewportFraction: 0.85),
+                    controller: PageController(viewportFraction: 0.88),
                     itemCount: saved.length,
                     itemBuilder: (context, i) {
                       final v = saved[i];
@@ -801,9 +810,16 @@ class _ProfileScreenState extends State<ProfileScreen>
                         child: Container(
                           padding: const EdgeInsets.all(18),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.15),
+                            color: AppTheme.bgSlateHigh,
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: Colors.white.withOpacity(0.25)),
+                            border: Border.all(color: AppTheme.goldMid.withOpacity(0.25)),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppTheme.goldMid.withOpacity(0.06),
+                                blurRadius: 12,
+                                spreadRadius: 1,
+                              ),
+                            ],
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -812,11 +828,11 @@ class _ProfileScreenState extends State<ProfileScreen>
                               Expanded(
                                 child: Text(
                                   '"${v['text']}"',
-                                  style: GoogleFonts.playfairDisplay(
-                                    fontSize: 15,
+                                  style: GoogleFonts.literata(
+                                    fontSize: 14,
                                     fontStyle: FontStyle.italic,
-                                    height: 1.5,
-                                    color: Colors.white,
+                                    height: 1.6,
+                                    color: AppTheme.textPrimary,
                                   ),
                                   maxLines: 4,
                                   overflow: TextOverflow.ellipsis,
@@ -828,22 +844,19 @@ class _ProfileScreenState extends State<ProfileScreen>
                                 children: [
                                   Text(
                                     '— ${v['ref']}',
-                                    style: GoogleFonts.plusJakartaSans(
+                                    style: GoogleFonts.manrope(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w600,
-                                      color: Colors.white.withOpacity(0.85),
+                                      color: AppTheme.goldMid,
                                     ),
                                   ),
                                   GestureDetector(
-                                                                        onTap: () {
+                                    onTap: () {
                                       StatsService.savedVerses.removeAt(i);
                                       setState(() {});
                                     },
-                                    child: Icon(
-                                      Icons.favorite_rounded,
-                                      color: Colors.white.withOpacity(0.8),
-                                      size: 18,
-                                    ),
+                                    child: Icon(Icons.favorite_rounded,
+                                        color: AppTheme.goldMid.withOpacity(0.7), size: 18),
                                   ),
                                 ],
                               ),
@@ -859,11 +872,10 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  // ══════════════════════════════════════════════════════════════
-  // 7. RHYTHMS NOTICED — CIRCULAR PETALS (clay)
-  // ══════════════════════════════════════════════════════════════
-   Widget _buildRhythmsNoticedCard() {
-    final pattern = StatsService.getTimeOfDayPattern();
+  // ═══════════════════════════════════════════════════════════
+  // 7. RHYTHMS NOTICED
+  // ═══════════════════════════════════════════════════════════
+  Widget _buildRhythmsNoticedCard() {
     final counts = <String, int>{};
     for (final e in StatsService.emotionHistory) {
       final emotion = e['emotion'] as String;
@@ -873,39 +885,27 @@ class _ProfileScreenState extends State<ProfileScreen>
       ..sort((a, b) => b.value.compareTo(a.value));
     final top = topEntries.take(6).toList();
 
-    return _BentoBox(
-      color: const Color(0xFFBC4749),
-      patternPainter: _VerticalBarsPattern(t: _shimmerController.value * 2 * pi),
+    return _ProfileBentoBox(
+      accentColor: _angry,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'RHYTHMS NOTICED',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.8,
-              color: Colors.white.withOpacity(0.7),
-            ),
-          ),
+          _sectionLabel('RHYTHMS NOTICED'),
           const SizedBox(height: 6),
           Text(
             'The emotions blooming most in you.',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 12,
-              color: Colors.white.withOpacity(0.6),
-            ),
+            style: GoogleFonts.manrope(fontSize: 12, color: AppTheme.textSecondary),
           ),
           const SizedBox(height: 18),
           Center(
             child: SizedBox(
-              width: 300,
-              height: 300,
+              width: 280,
+              height: 280,
               child: AnimatedBuilder(
                 animation: _petalRotateController,
                 builder: (_, __) {
                   return CustomPaint(
-                    painter: _PetalsPainter(
+                    painter: _ProfilePetalsPainter(
                       entries: top,
                       t: _petalRotateController.value * 2 * pi,
                     ),
@@ -925,17 +925,17 @@ class _ProfileScreenState extends State<ProfileScreen>
                   Container(
                     width: 8, height: 8,
                     decoration: BoxDecoration(
-                      color: _emotionColor(e.key),
+                      color: _emotionAccent(e.key),
                       shape: BoxShape.circle,
                     ),
                   ),
                   const SizedBox(width: 5),
                   Text(
                     _capitalize(e.key),
-                    style: GoogleFonts.plusJakartaSans(
+                    style: GoogleFonts.manrope(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: Colors.white.withOpacity(0.85),
+                      color: AppTheme.textSecondary,
                     ),
                   ),
                 ],
@@ -946,47 +946,27 @@ class _ProfileScreenState extends State<ProfileScreen>
       ),
     );
   }
-  Color _emotionColor(String e) {
-    switch (e) {
-      case 'calm': return const Color(0xFFB8D8FF);
-      case 'happy': return const Color(0xFFFFE066);
-      case 'sad': return const Color(0xFFD8CCEF);
-      case 'angry': return const Color(0xFFFF9B85);
-      case 'hopeful': return const Color(0xFFBEE7FF);
-      case 'anxious': return const Color(0xFFE8CFFF);
-      case 'grateful': return const Color(0xFFCFF0D0);
-      case 'stressed': return const Color(0xFFFFD9B0);
-      case 'optimistic': return const Color(0xFFFFF0A8);
-      case 'depressed': return const Color(0xFFC7CDDA);
-      default: return const Color(0xFFFFFFFF);
-    }
-  }
 
-  String _capitalize(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
-
-  // ══════════════════════════════════════════════════════════════
-  // 8. CALENDAR (ocean)
-  // ══════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════
+  // 8. CALENDAR
+  // ═══════════════════════════════════════════════════════════
   Widget _buildCalendarCard() {
-    return _BentoBox(
-      color: const Color(0xFF0077B6),
-      patternPainter: _GridLinesPattern(t: _shimmerController.value * 2 * pi),
+    return _ProfileBentoBox(
+      accentColor: _calm,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.calendar_month_rounded, color: Colors.white, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                'CALENDAR CONNECTION',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.5,
-                  color: Colors.white.withOpacity(0.7),
+              AnimatedBuilder(
+                animation: _floatController,
+                builder: (_, __) => Transform.translate(
+                  offset: Offset(0, sin(_floatController.value * pi) * 2),
+                  child: Icon(Icons.calendar_month_rounded, color: _calm, size: 18),
                 ),
               ),
+              const SizedBox(width: 8),
+              _sectionLabel('CALENDAR CONNECTION'),
             ],
           ),
           const SizedBox(height: 12),
@@ -994,39 +974,32 @@ class _ProfileScreenState extends State<ProfileScreen>
             _calendarConnected
                 ? 'Connected. Lumíne walks with your day.'
                 : 'Connect Google Calendar to receive verses timed to your events.',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 13,
-              color: Colors.white.withOpacity(0.85),
-              height: 1.5,
+            style: GoogleFonts.manrope(
+              fontSize: 13, color: AppTheme.textSecondary, height: 1.5,
             ),
           ),
           const SizedBox(height: 14),
           GestureDetector(
-            onTap: () async {
-              // simple simulated toggle for now
-              setState(() => _calendarConnected = !_calendarConnected);
-            },
+            onTap: () => setState(() => _calendarConnected = !_calendarConnected),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: _calm.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: _calm.withOpacity(0.35)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
                     _calendarConnected ? Icons.check_circle_rounded : Icons.link_rounded,
-                    color: const Color(0xFF0077B6),
-                    size: 16,
+                    color: _calm, size: 16,
                   ),
                   const SizedBox(width: 6),
                   Text(
                     _calendarConnected ? 'Connected' : 'Connect',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF0077B6),
+                    style: GoogleFonts.manrope(
+                      fontSize: 13, fontWeight: FontWeight.w700, color: _calm,
                     ),
                   ),
                 ],
@@ -1038,129 +1011,97 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  // ══════════════════════════════════════════════════════════════
-  // 9. LUMÍNE SETTINGS (indigo)
-  // ══════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════
+  // 9. SETTINGS
+  // ═══════════════════════════════════════════════════════════
   Widget _buildSettingsCard() {
-    return _BentoBox(
-      color: const Color(0xFF3A0CA3),
-      patternPainter: _DotMeshPattern(t: _shimmerController.value * 2 * pi),
+    return _ProfileBentoBox(
+      accentColor: _anxious,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.settings_rounded, color: Colors.white, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                'LUMÍNE SETTINGS',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.8,
-                  color: Colors.white.withOpacity(0.7),
+              AnimatedBuilder(
+                animation: _floatController,
+                builder: (_, __) => Transform.rotate(
+                  angle: sin(_floatController.value * pi) * 0.3,
+                  child: Icon(Icons.settings_rounded,
+                      color: AppTheme.textSecondary, size: 18),
                 ),
               ),
+              const SizedBox(width: 8),
+              _sectionLabel('LUMÍNE SETTINGS'),
             ],
           ),
           const SizedBox(height: 18),
-
-          _segmentRow(
-            'Tone',
-            ['warm', 'direct', 'gentle'],
-            _preferredTone,
-            (v) => setState(() => _preferredTone = v),
-          ),
+          _segmentRow('Tone', ['warm', 'direct', 'gentle'], _preferredTone,
+              (v) => setState(() => _preferredTone = v)),
           const SizedBox(height: 14),
-          _segmentRow(
-            'Translation',
-            ['KJV', 'NIV', 'ESV', 'MSG'],
-            _translation,
-            (v) => setState(() => _translation = v),
-          ),
+          _segmentRow('Translation', ['KJV', 'NIV', 'ESV', 'MSG'], _translation,
+              (v) => setState(() => _translation = v)),
           const SizedBox(height: 14),
-          _segmentRow(
-            'Response length',
-            ['short', 'medium', 'long'],
-            _responseLength,
-            (v) => setState(() => _responseLength = v),
-          ),
+          _segmentRow('Response length', ['short', 'medium', 'long'], _responseLength,
+              (v) => setState(() => _responseLength = v)),
           const SizedBox(height: 16),
-
-          // Voice toggle
           Row(
             children: [
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
+                  color: AppTheme.bgSlateHigh,
                   shape: BoxShape.circle,
+                  border: Border.all(color: AppTheme.borderSoft),
                 ),
-                child: const Icon(Icons.volume_up_rounded, color: Colors.white, size: 16),
+                child: Icon(Icons.volume_up_rounded, color: AppTheme.textSecondary, size: 16),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: Text(
-                  'Voice output',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
-                ),
+                child: Text('Voice output',
+                    style: GoogleFonts.manrope(
+                        fontSize: 14, fontWeight: FontWeight.w500, color: AppTheme.textPrimary)),
               ),
-              _MiniToggle(
+              _ProfileMiniToggle(
                 value: _voiceEnabled,
                 onChanged: (v) => setState(() => _voiceEnabled = v),
               ),
             ],
           ),
           const SizedBox(height: 14),
-
-          // Quiet hours
           Row(
             children: [
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
+                  color: AppTheme.bgSlateHigh,
                   shape: BoxShape.circle,
+                  border: Border.all(color: AppTheme.borderSoft),
                 ),
-                child: const Icon(Icons.nights_stay_rounded, color: Colors.white, size: 16),
+                child: Icon(Icons.nights_stay_rounded, color: AppTheme.textSecondary, size: 16),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: Text(
-                  'Quiet hours',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
-                ),
+                child: Text('Quiet hours',
+                    style: GoogleFonts.manrope(
+                        fontSize: 14, fontWeight: FontWeight.w500, color: AppTheme.textPrimary)),
               ),
               _timePill(_quietStart, (t) => setState(() => _quietStart = t)),
-              Text(' → ', style: GoogleFonts.plusJakartaSans(fontSize: 13, color: Colors.white.withOpacity(0.7))),
+              Text(' → ', style: GoogleFonts.manrope(fontSize: 13, color: AppTheme.textTertiary)),
               _timePill(_quietEnd, (t) => setState(() => _quietEnd = t)),
             ],
-                      const SizedBox(height: 20),
-
-          Container(height: 1, color: Colors.white.withOpacity(0.1)),
-
+          ),
           const SizedBox(height: 20),
-
+          Container(height: 1, color: AppTheme.borderSoft),
+          const SizedBox(height: 20),
           GestureDetector(
-            onTap: () => _showResetConfirmation(),
+            onTap: _showResetConfirmation,
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 14),
               decoration: BoxDecoration(
-                color: const Color(0xFFE85D5D).withOpacity(0.15),
+                color: const Color(0xFFE85D5D).withOpacity(0.08),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: const Color(0xFFE85D5D).withOpacity(0.4),
-                  width: 1,
-                ),
+                border: Border.all(color: const Color(0xFFE85D5D).withOpacity(0.35)),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -1169,7 +1110,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                   const SizedBox(width: 10),
                   Text(
                     'Begin Again',
-                    style: GoogleFonts.plusJakartaSans(
+                    style: GoogleFonts.manrope(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
                       color: const Color(0xFFE85D5D),
@@ -1180,18 +1121,13 @@ class _ProfileScreenState extends State<ProfileScreen>
               ),
             ),
           ),
-
           const SizedBox(height: 8),
-
           Text(
             'This will clear all your data and start fresh.',
             textAlign: TextAlign.center,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 11,
-              color: Colors.white.withOpacity(0.4),
-              fontStyle: FontStyle.italic,
+            style: GoogleFonts.manrope(
+              fontSize: 11, color: AppTheme.textTertiary, fontStyle: FontStyle.italic,
             ),
-          ),
           ),
         ],
       ),
@@ -1217,20 +1153,16 @@ class _ProfileScreenState extends State<ProfileScreen>
               const SizedBox(height: 16),
               Text(
                 'Begin Again?',
-                style: AppTheme.display(
-                  size: 24,
-                  color: AppTheme.textPrimary,
-                  weight: FontWeight.w600,
+                style: GoogleFonts.cormorantGaramond(
+                  fontSize: 24, fontWeight: FontWeight.w600, color: AppTheme.textPrimary,
                 ),
               ),
               const SizedBox(height: 12),
               Text(
                 'This will clear all your conversations, saved verses, emotion history, soul map, and memory.\n\nLumíne will meet you as if for the first time.',
                 textAlign: TextAlign.center,
-                style: AppTheme.body(
-                  size: 14,
-                  color: AppTheme.textSecondary,
-                  height: 1.6,
+                style: GoogleFonts.manrope(
+                  fontSize: 14, color: AppTheme.textSecondary, height: 1.6,
                 ),
               ),
               const SizedBox(height: 24),
@@ -1247,14 +1179,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                           border: Border.all(color: AppTheme.bgSlateGlow),
                         ),
                         child: Center(
-                          child: Text(
-                            'Stay',
-                            style: AppTheme.body(
-                              size: 14,
-                              weight: FontWeight.w700,
-                              color: AppTheme.textPrimary,
-                            ),
-                          ),
+                          child: Text('Stay',
+                              style: GoogleFonts.manrope(
+                                  fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
                         ),
                       ),
                     ),
@@ -1269,18 +1196,14 @@ class _ProfileScreenState extends State<ProfileScreen>
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFE85D5D),
+                          color: const Color(0xFFE85D5D).withOpacity(0.15),
                           borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFE85D5D).withOpacity(0.4)),
                         ),
                         child: Center(
-                          child: Text(
-                            'Begin Again',
-                            style: AppTheme.body(
-                              size: 14,
-                              weight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                          ),
+                          child: Text('Begin Again',
+                              style: GoogleFonts.manrope(
+                                  fontSize: 14, fontWeight: FontWeight.w700, color: const Color(0xFFE85D5D))),
                         ),
                       ),
                     ),
@@ -1324,10 +1247,8 @@ class _ProfileScreenState extends State<ProfileScreen>
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          'Lumíne has been reset. Welcome back.',
-          style: GoogleFonts.plusJakartaSans(fontSize: 14, color: Colors.white),
-        ),
+        content: Text('Lumíne has been reset. Welcome back.',
+            style: GoogleFonts.manrope(fontSize: 14, color: Colors.white)),
         backgroundColor: const Color(0xFFE85D5D),
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 3),
@@ -1337,18 +1258,14 @@ class _ProfileScreenState extends State<ProfileScreen>
     setState(() {});
   }
 
-  Widget _segmentRow(String label, List<String> options, String current, ValueChanged<String> onChanged) {
+  Widget _segmentRow(String label, List<String> options, String current,
+      ValueChanged<String> onChanged) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: Colors.white.withOpacity(0.7),
-          ),
-        ),
+        Text(label,
+            style: GoogleFonts.manrope(
+                fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.textSecondary)),
         const SizedBox(height: 6),
         Wrap(
           spacing: 6,
@@ -1360,15 +1277,22 @@ class _ProfileScreenState extends State<ProfileScreen>
                 duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: selected ? Colors.white : Colors.white.withOpacity(0.12),
+                  color: selected
+                      ? AppTheme.goldMid.withOpacity(0.15)
+                      : AppTheme.bgSlateHigh,
                   borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: selected
+                        ? AppTheme.goldMid.withOpacity(0.5)
+                        : AppTheme.borderSoft,
+                  ),
                 ),
                 child: Text(
                   opt,
-                  style: GoogleFonts.plusJakartaSans(
+                  style: GoogleFonts.manrope(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
-                    color: selected ? const Color(0xFF3A0CA3) : Colors.white,
+                    color: selected ? AppTheme.goldMid : AppTheme.textSecondary,
                     letterSpacing: 0.4,
                   ),
                 ),
@@ -1383,62 +1307,53 @@ class _ProfileScreenState extends State<ProfileScreen>
   Widget _timePill(TimeOfDay time, ValueChanged<TimeOfDay> onChanged) {
     return GestureDetector(
       onTap: () async {
-        final picked = await showTimePicker(
-          context: context,
-          initialTime: time,
-        );
+        final picked = await showTimePicker(context: context, initialTime: time);
         if (picked != null) onChanged(picked);
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.18),
+          color: AppTheme.bgSlateHigh,
           borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppTheme.borderSoft),
         ),
         child: Text(
           time.format(context),
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
+          style: GoogleFonts.manrope(
+            fontSize: 12, fontWeight: FontWeight.w700, color: AppTheme.textPrimary,
           ),
         ),
       ),
     );
   }
 
-  // ══════════════════════════════════════════════════════════════
-  // 10. EXPORT SOUL MAP
-  // ══════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════
+  // 10. EXPORT
+  // ═══════════════════════════════════════════════════════════
   Widget _buildExportCard() {
-    return _BentoBox(
-      color: const Color(0xFFE85D75),
-      patternPainter: _SparkleScatterPattern(t: _shimmerController.value * 2 * pi),
+    return _ProfileBentoBox(
+      accentColor: AppTheme.goldMid,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.share_rounded, color: Colors.white, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                'EXPORT SOUL MAP',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.8,
-                  color: Colors.white.withOpacity(0.7),
+              AnimatedBuilder(
+                animation: _floatController,
+                builder: (_, __) => Transform.translate(
+                  offset: Offset(0, sin(_floatController.value * pi) * 2),
+                  child: Icon(Icons.share_rounded, color: AppTheme.goldMid, size: 18),
                 ),
               ),
+              const SizedBox(width: 8),
+              _sectionLabel('EXPORT SOUL MAP'),
             ],
           ),
           const SizedBox(height: 12),
           Text(
             'Save a beautiful image of your soul map — share it, keep it, remember it.',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 13,
-              color: Colors.white.withOpacity(0.85),
-              height: 1.5,
+            style: GoogleFonts.manrope(
+              fontSize: 13, color: AppTheme.textSecondary, height: 1.5,
             ),
           ),
           const SizedBox(height: 14),
@@ -1447,30 +1362,27 @@ class _ProfileScreenState extends State<ProfileScreen>
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('Soul map saved to gallery.',
-                      style: GoogleFonts.plusJakartaSans()),
-                  backgroundColor: const Color(0xFFE85D75),
+                      style: GoogleFonts.manrope(color: Colors.white)),
+                  backgroundColor: AppTheme.bgSlateHigh,
+                  behavior: SnackBarBehavior.floating,
                 ),
               );
             },
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppTheme.goldMid.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppTheme.goldMid.withOpacity(0.35)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.image_rounded, color: Color(0xFFE85D75), size: 16),
+                  Icon(Icons.image_rounded, color: AppTheme.goldMid, size: 16),
                   const SizedBox(width: 6),
-                  Text(
-                    'Save as Image',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFFE85D75),
-                    ),
-                  ),
+                  Text('Save as Image',
+                      style: GoogleFonts.manrope(
+                          fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.goldMid)),
                 ],
               ),
             ),
@@ -1480,13 +1392,12 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  // ══════════════════════════════════════════════════════════════
-  // 11. ABOUT LUMÍNE (midnight)
-  // ══════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════
+  // 11. ABOUT
+  // ═══════════════════════════════════════════════════════════
   Widget _buildAboutCard() {
-    return _BentoBox(
-      color: const Color(0xFF1A1A2E),
-      patternPainter: _StarScatterPattern(t: _shimmerController.value * 2 * pi),
+    return _ProfileBentoBox(
+      accentColor: AppTheme.textTertiary,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1495,41 +1406,24 @@ class _ProfileScreenState extends State<ProfileScreen>
               AnimatedBuilder(
                 animation: _pulseController,
                 builder: (_, __) => Transform.scale(
-                  scale: 1.0 + sin(_pulseController.value * pi) * 0.1,
-                  child: const Text('✨', style: TextStyle(fontSize: 20)),
+                  scale: 1.0 + sin(_pulseController.value * pi) * 0.15,
+                  child: Icon(Icons.auto_awesome, color: AppTheme.goldMid, size: 18),
                 ),
               ),
               const SizedBox(width: 8),
-              Text(
-                'ABOUT LUMÍNE',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.8,
-                  color: Colors.white.withOpacity(0.7),
-                ),
-              ),
+              _sectionLabel('ABOUT LUMÍNE'),
             ],
           ),
           const SizedBox(height: 14),
           Text(
             'Lumíne is an ambient spiritual companion — Scripture that reads you. It listens deeply, notices your patterns, and delivers the right word at the right moment.',
-            style: GoogleFonts.playfairDisplay(
-              fontSize: 15,
-              fontStyle: FontStyle.italic,
-              height: 1.6,
-              color: Colors.white.withOpacity(0.9),
+            style: GoogleFonts.literata(
+              fontSize: 14, fontStyle: FontStyle.italic, height: 1.7, color: AppTheme.textSecondary,
             ),
           ),
           const SizedBox(height: 16),
-          Text(
-            'Powered by',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 11,
-              color: Colors.white.withOpacity(0.5),
-              letterSpacing: 1,
-            ),
-          ),
+          Text('Powered by',
+              style: GoogleFonts.manrope(fontSize: 11, color: AppTheme.textTertiary, letterSpacing: 1)),
           const SizedBox(height: 6),
           Row(
             children: [
@@ -1539,36 +1433,20 @@ class _ProfileScreenState extends State<ProfileScreen>
             ],
           ),
           const SizedBox(height: 14),
-          Text(
-            'Your soul data stays on your device.',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 11,
-              color: Colors.white.withOpacity(0.55),
-              fontStyle: FontStyle.italic,
-            ),
-          ),
+          Text('Your soul data stays on your device.',
+              style: GoogleFonts.manrope(
+                  fontSize: 11, color: AppTheme.textTertiary, fontStyle: FontStyle.italic)),
           const SizedBox(height: 6),
           Row(
             children: [
-              Text(
-                'v1.0',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 11,
-                  color: Colors.white.withOpacity(0.4),
-                ),
-              ),
+              Text('v1.0',
+                  style: GoogleFonts.manrope(fontSize: 11, color: AppTheme.textTertiary)),
               const Spacer(),
               Text('made with ',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 11,
-                    color: Colors.white.withOpacity(0.4),
-                  )),
+                  style: GoogleFonts.manrope(fontSize: 11, color: AppTheme.textTertiary)),
               const Icon(Icons.favorite_rounded, color: Color(0xFFE85D75), size: 12),
               Text(' by Naren',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 11,
-                    color: Colors.white.withOpacity(0.4),
-                  )),
+                  style: GoogleFonts.manrope(fontSize: 11, color: AppTheme.textTertiary)),
             ],
           ),
         ],
@@ -1580,24 +1458,28 @@ class _ProfileScreenState extends State<ProfileScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.12),
+        color: AppTheme.bgSlateHigh,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.2)),
+        border: Border.all(color: AppTheme.borderSoft),
       ),
-      child: Text(
-        label,
-        style: GoogleFonts.plusJakartaSans(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: Colors.white,
-        ),
+      child: Text(label,
+          style: GoogleFonts.manrope(
+              fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.textSecondary)),
+    );
+  }
+
+  Widget _sectionLabel(String text) {
+    return Text(
+      text,
+      style: GoogleFonts.manrope(
+        fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.8, color: AppTheme.textTertiary,
       ),
     );
   }
 }
 
 // ══════════════════════════════════════════════════════════════════
-// AVATAR FACE PAINTER — abstract painted face
+// ORIGINAL AVATAR FACE PAINTER — warm cream, closed eyes, blush, smile
 // ══════════════════════════════════════════════════════════════════
 class _AvatarFacePainter extends CustomPainter {
   final double pulse;
@@ -1666,17 +1548,17 @@ class _AvatarFacePainter extends CustomPainter {
 }
 
 // ══════════════════════════════════════════════════════════════════
-// HANDWRITTEN FLOURISH LINE PAINTER
+// FLOURISH LINE PAINTER
 // ══════════════════════════════════════════════════════════════════
-class _FlourishLinePainter extends CustomPainter {
+class _ProfileFlourishLinePainter extends CustomPainter {
   final double t;
-  _FlourishLinePainter({required this.t});
+  _ProfileFlourishLinePainter({required this.t});
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.7)
-      ..strokeWidth = 2
+      ..color = const Color(0xFFF1D98A).withOpacity(0.5)
+      ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
 
@@ -1684,45 +1566,43 @@ class _FlourishLinePainter extends CustomPainter {
     path.moveTo(10, size.height * 0.5);
     for (double x = 10; x < size.width - 10; x += 4) {
       final progress = x / size.width;
-      final wave = sin(progress * pi * 3) * 6 + sin(progress * pi * 7) * 3;
+      final wave = sin(progress * pi * 3) * 4 + sin(progress * pi * 7) * 2;
       path.lineTo(x, size.height * 0.5 + wave);
     }
     canvas.drawPath(path, paint);
-
-    // small end swirl
     canvas.drawCircle(
       Offset(size.width - 8, size.height * 0.5),
-      3,
-      Paint()..color = Colors.white.withOpacity(0.7),
+      2,
+      Paint()..color = const Color(0xFFF1D98A).withOpacity(0.5),
     );
   }
 
   @override
-  bool shouldRepaint(covariant _FlourishLinePainter old) => false;
+  bool shouldRepaint(covariant _ProfileFlourishLinePainter old) => false;
 }
 
 // ══════════════════════════════════════════════════════════════════
-// PETALS PAINTER (Rhythms Noticed)
+// PETALS PAINTER
 // ══════════════════════════════════════════════════════════════════
-class _PetalsPainter extends CustomPainter {
+class _ProfilePetalsPainter extends CustomPainter {
   final List<MapEntry<String, int>> entries;
   final double t;
 
-  _PetalsPainter({required this.entries, required this.t});
+  _ProfilePetalsPainter({required this.entries, required this.t});
 
   Color _emotionColor(String e) {
     switch (e) {
-      case 'calm': return const Color(0xFFB8D8FF);
-      case 'happy': return const Color(0xFFFFE066);
-      case 'sad': return const Color(0xFFD8CCEF);
-      case 'angry': return const Color(0xFFFF9B85);
-      case 'hopeful': return const Color(0xFFBEE7FF);
-      case 'anxious': return const Color(0xFFE8CFFF);
-      case 'grateful': return const Color(0xFFCFF0D0);
-      case 'stressed': return const Color(0xFFFFD9B0);
-      case 'optimistic': return const Color(0xFFFFF0A8);
-      case 'depressed': return const Color(0xFFC7CDDA);
-      default: return const Color(0xFFFFFFFF);
+      case 'calm': return const Color(0xFF7BA9F0);
+      case 'happy': return const Color(0xFFFFD470);
+      case 'sad': return const Color(0xFFB8A0E8);
+      case 'angry': return const Color(0xFFFF7C6B);
+      case 'hopeful': return const Color(0xFF6BC5D9);
+      case 'anxious': return const Color(0xFFC688F0);
+      case 'grateful': return const Color(0xFF7DD69F);
+      case 'stressed': return const Color(0xFFFFA560);
+      case 'optimistic': return const Color(0xFFFFDF80);
+      case 'depressed': return const Color(0xFF8FA0B8);
+      default: return const Color(0xFF8C8579);
     }
   }
 
@@ -1730,7 +1610,7 @@ class _PetalsPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     if (entries.isEmpty) {
-      canvas.drawCircle(center, 6, Paint()..color = Colors.white.withOpacity(0.4));
+      canvas.drawCircle(center, 6, Paint()..color = const Color(0xFF5A554D));
       return;
     }
 
@@ -1739,7 +1619,6 @@ class _PetalsPainter extends CustomPainter {
 
     for (int i = 0; i < count; i++) {
       final e = entries[i];
-      // Continuous smooth rotation — t comes from a 40-second linear controller
       final angle = (i / count) * 2 * pi + t;
       final ratio = e.value / maxCount;
       final petalLen = size.width * 0.32 * (0.5 + ratio * 0.5);
@@ -1759,99 +1638,54 @@ class _PetalsPainter extends CustomPainter {
       petalPath.quadraticBezierTo(-petalWidth, 0, 0, -petalLen * 0.5);
       petalPath.close();
 
-      final petalPaint = Paint()..color = _emotionColor(e.key).withOpacity(0.85);
-      canvas.drawPath(petalPath, petalPaint);
-
+      canvas.drawPath(petalPath, Paint()..color = _emotionColor(e.key).withOpacity(0.7));
       canvas.drawPath(
         petalPath,
         Paint()
-          ..color = Colors.white.withOpacity(0.35)
-          ..strokeWidth = 1.5
+          ..color = _emotionColor(e.key).withOpacity(0.3)
+          ..strokeWidth = 1
           ..style = PaintingStyle.stroke,
       );
 
       canvas.restore();
     }
 
-    canvas.drawCircle(
-      center,
-      18,
-      Paint()..color = Colors.white,
-    );
-    canvas.drawCircle(
-      center,
-      10,
-      Paint()..color = const Color(0xFFBC4749),
-    );
+    canvas.drawCircle(center, 14, Paint()..color = const Color(0xFF1A1D21));
+    canvas.drawCircle(center, 10, Paint()..color = const Color(0xFFF1D98A).withOpacity(0.8));
+    canvas.drawCircle(center, 5, Paint()..color = const Color(0xFFFFF8E5));
   }
 
   @override
-  bool shouldRepaint(covariant _PetalsPainter old) => old.t != t;
-}
-// ══════════════════════════════════════════════════════════════════
-// MINI TOGGLE
-// ══════════════════════════════════════════════════════════════════
-class _MiniToggle extends StatelessWidget {
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  const _MiniToggle({required this.value, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => onChanged(!value),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        width: 42, height: 24,
-        padding: const EdgeInsets.all(3),
-        decoration: BoxDecoration(
-          color: value ? Colors.white : Colors.white.withOpacity(0.2),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: AnimatedAlign(
-          alignment: value ? Alignment.centerRight : Alignment.centerLeft,
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeInOut,
-          child: Container(
-            width: 18, height: 18,
-            decoration: BoxDecoration(
-              color: value ? const Color(0xFF0F0F0F) : Colors.white,
-              shape: BoxShape.circle,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  bool shouldRepaint(covariant _ProfilePetalsPainter old) => old.t != t;
 }
 
 // ══════════════════════════════════════════════════════════════════
-// BENTO BOX
+// PROFILE BENTO BOX
 // ══════════════════════════════════════════════════════════════════
-class _BentoBox extends StatelessWidget {
+class _ProfileBentoBox extends StatelessWidget {
   final Widget child;
-  final Color color;
-  final CustomPainter patternPainter;
+  final Color accentColor;
 
-  const _BentoBox({
-    required this.child,
-    required this.color,
-    required this.patternPainter,
-  });
+  const _ProfileBentoBox({required this.child, required this.accentColor});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: color,
+        color: AppTheme.bgSlate,
         borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppTheme.bgSlateGlow.withOpacity(0.6)),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.35),
-            blurRadius: 18,
+            color: Colors.black.withOpacity(0.35),
+            blurRadius: 20,
             offset: const Offset(0, 8),
+          ),
+          BoxShadow(
+            color: accentColor.withOpacity(0.06),
+            blurRadius: 24,
+            spreadRadius: 2,
           ),
         ],
       ),
@@ -1859,7 +1693,29 @@ class _BentoBox extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         child: Stack(
           children: [
-            Positioned.fill(child: CustomPaint(painter: patternPainter)),
+            Positioned(
+              top: 0, left: 0, right: 0,
+              child: Container(
+                height: 50,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Colors.white.withOpacity(0.03), Colors.transparent],
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 24, bottom: 24, left: 0,
+              child: Container(
+                width: 2,
+                decoration: BoxDecoration(
+                  color: accentColor.withOpacity(0.4),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
             Padding(
               padding: const EdgeInsets.all(20),
               child: child,
@@ -1872,360 +1728,42 @@ class _BentoBox extends StatelessWidget {
 }
 
 // ══════════════════════════════════════════════════════════════════
-// CORNER BLOB BACKGROUND — like reference image
+// MINI TOGGLE
 // ══════════════════════════════════════════════════════════════════
-class _BlobBackground extends StatelessWidget {
-  final AnimationController bgController;
-  final Color tint;
+class _ProfileMiniToggle extends StatelessWidget {
+  final bool value;
+  final ValueChanged<bool> onChanged;
 
-  const _BlobBackground({required this.bgController, required this.tint});
+  const _ProfileMiniToggle({required this.value, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
-    final view = View.of(context);
-    final w = view.physicalSize.width / view.devicePixelRatio;
-    final h = view.physicalSize.height / view.devicePixelRatio;
-
-    return RepaintBoundary(
-      child: OverflowBox(
-        minWidth: w, maxWidth: w,
-        minHeight: h, maxHeight: h,
-        alignment: Alignment.topLeft,
-        child: TweenAnimationBuilder<Color?>(
-          duration: const Duration(milliseconds: 2000),
+    return GestureDetector(
+      onTap: () => onChanged(!value),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        width: 42, height: 24,
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          color: value ? AppTheme.goldMid.withOpacity(0.25) : AppTheme.bgSlateHigh,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: value ? AppTheme.goldMid.withOpacity(0.5) : AppTheme.borderSoft,
+          ),
+        ),
+        child: AnimatedAlign(
+          alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+          duration: const Duration(milliseconds: 250),
           curve: Curves.easeInOut,
-          tween: ColorTween(begin: tint, end: tint),
-          builder: (context, animatedTint, _) {
-            return AnimatedBuilder(
-              animation: bgController,
-              builder: (_, __) {
-                return CustomPaint(
-                  size: Size(w, h),
-                  painter: _CornerBlobPainter(
-                    t: bgController.value * 2 * pi,
-                    blobColor: animatedTint ?? tint,
-                  ),
-                );
-              },
-            );
-          },
+          child: Container(
+            width: 18, height: 18,
+            decoration: BoxDecoration(
+              color: value ? AppTheme.goldMid : AppTheme.textTertiary,
+              shape: BoxShape.circle,
+            ),
+          ),
         ),
       ),
     );
   }
-}
-
-class _CornerBlobPainter extends CustomPainter {
-  final double t;
-  final Color blobColor;
-
-  _CornerBlobPainter({required this.t, required this.blobColor});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    // Cream base
-    canvas.drawRect(Offset.zero & size, Paint()..color = const Color(0xFFFDF6E8));
-
-    final w = size.width;
-    final h = size.height;
-
-    final blobPaint = Paint()..color = blobColor;
-    final blobPaintLight = Paint()..color = Color.lerp(blobColor, Colors.white, 0.35)!;
-    final linePaint = Paint()
-      ..color = const Color(0xFF0F0F0F).withOpacity(0.4)
-      ..strokeWidth = 1.5
-      ..style = PaintingStyle.stroke;
-
-    // ── Top-left blob ──
-    _drawCornerBlob(
-      canvas,
-      Offset(-w * 0.1, -h * 0.05),
-      w * 0.7,
-      h * 0.28,
-      blobPaint,
-      linePaint,
-      t + 0.5,
-    );
-    _drawCornerBlob(
-      canvas,
-      Offset(-w * 0.15, -h * 0.1),
-      w * 0.5,
-      h * 0.22,
-      blobPaintLight,
-      null,
-      t + 1.5,
-    );
-
-    // ── Top-right blob ──
-    _drawCornerBlob(
-      canvas,
-      Offset(w * 1.1, -h * 0.03),
-      w * 0.55,
-      h * 0.25,
-      blobPaintLight,
-      linePaint,
-      t + 2.0,
-    );
-
-    // ── Bottom-left blob ──
-    _drawCornerBlob(
-      canvas,
-      Offset(-w * 0.1, h * 1.05),
-      w * 0.6,
-      h * 0.25,
-      blobPaintLight,
-      linePaint,
-      t + 3.0,
-    );
-    _drawCornerBlob(
-      canvas,
-      Offset(-w * 0.15, h * 1.08),
-      w * 0.45,
-      h * 0.2,
-      blobPaint,
-      null,
-      t + 3.5,
-    );
-
-    // ── Bottom-right blob ──
-    _drawCornerBlob(
-      canvas,
-      Offset(w * 1.1, h * 1.08),
-      w * 0.65,
-      h * 0.27,
-      blobPaint,
-      linePaint,
-      t + 4.5,
-    );
-  }
-
-  void _drawCornerBlob(
-    Canvas canvas,
-    Offset center,
-    double rx,
-    double ry,
-    Paint paint,
-    Paint? linePaint,
-    double phase,
-  ) {
-    final path = Path();
-    const points = 24;
-    for (int i = 0; i <= points; i++) {
-      final angle = (i / points) * 2 * pi;
-      final wobble = sin(angle * 3 + phase) * 20 + cos(angle * 2 + phase * 0.7) * 12;
-      final x = center.dx + cos(angle) * (rx + wobble);
-      final y = center.dy + sin(angle) * (ry + wobble);
-      if (i == 0) {
-        path.moveTo(x, y);
-      } else {
-        path.lineTo(x, y);
-      }
-    }
-    path.close();
-    canvas.drawPath(path, paint);
-    if (linePaint != null) canvas.drawPath(path, linePaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _CornerBlobPainter old) =>
-      old.t != t || old.blobColor != blobColor;
-}
-
-// ══════════════════════════════════════════════════════════════════
-// PATTERN PAINTERS
-// ══════════════════════════════════════════════════════════════════
-
-class _FlourishPattern extends CustomPainter {
-  final double t;
-  _FlourishPattern({required this.t});
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white.withOpacity(0.06)
-      ..strokeWidth = 1
-      ..style = PaintingStyle.stroke;
-    for (int i = 0; i < 5; i++) {
-      final path = Path();
-      final y = size.height * (0.15 + i * 0.18);
-      path.moveTo(0, y);
-      for (double x = 0; x < size.width; x += 4) {
-        path.lineTo(x, y + sin(x * 0.02 + t + i) * 6);
-      }
-      canvas.drawPath(path, paint);
-    }
-  }
-  @override
-  bool shouldRepaint(covariant _FlourishPattern old) => old.t != t;
-}
-
-class _DiagonalStarburstPattern extends CustomPainter {
-  final double t;
-  _DiagonalStarburstPattern({required this.t});
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width * 0.9, size.height * 0.2);
-    final paint = Paint()
-      ..color = Colors.white.withOpacity(0.06)
-      ..strokeWidth = 0.8
-      ..style = PaintingStyle.stroke;
-    for (int i = 0; i < 16; i++) {
-      final angle = (i / 16) * 2 * pi + t * 0.1;
-      canvas.drawLine(
-        center,
-        Offset(center.dx + cos(angle) * 200, center.dy + sin(angle) * 200),
-        paint,
-      );
-    }
-  }
-  @override
-  bool shouldRepaint(covariant _DiagonalStarburstPattern old) => old.t != t;
-}
-
-class _GridDotsPattern extends CustomPainter {
-  final double t;
-  _GridDotsPattern({required this.t});
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = Colors.white.withOpacity(0.08);
-    for (double x = 12; x < size.width; x += 20) {
-      for (double y = 12; y < size.height; y += 20) {
-        final wave = sin(x * 0.05 + y * 0.05 + t) * 0.5 + 0.5;
-        canvas.drawCircle(Offset(x, y), 1.2 * wave, paint);
-      }
-    }
-  }
-  @override
-  bool shouldRepaint(covariant _GridDotsPattern old) => old.t != t;
-}
-
-class _ConcentricArcsPattern extends CustomPainter {
-  final double t;
-  _ConcentricArcsPattern({required this.t});
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width * 0.1, size.height * 0.9);
-    final paint = Paint()
-      ..color = Colors.white.withOpacity(0.06)
-      ..strokeWidth = 1
-      ..style = PaintingStyle.stroke;
-    for (int i = 1; i <= 8; i++) {
-      canvas.drawCircle(center, i * 30.0 + sin(t + i) * 3, paint);
-    }
-  }
-  @override
-  bool shouldRepaint(covariant _ConcentricArcsPattern old) => old.t != t;
-}
-
-class _WaveLinesPattern extends CustomPainter {
-  final double t;
-  _WaveLinesPattern({required this.t});
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white.withOpacity(0.05)
-      ..strokeWidth = 0.8;
-    for (double y = 20; y < size.height; y += 24) {
-      final path = Path();
-      path.moveTo(0, y);
-      for (double x = 0; x < size.width; x += 4) {
-        path.lineTo(x, y + sin(x * 0.03 + t + y * 0.02) * 4);
-      }
-      canvas.drawPath(path, paint);
-    }
-  }
-  @override
-  bool shouldRepaint(covariant _WaveLinesPattern old) => old.t != t;
-}
-
-class _SparkleScatterPattern extends CustomPainter {
-  final double t;
-  _SparkleScatterPattern({required this.t});
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rng = Random(42);
-    for (int i = 0; i < 40; i++) {
-      final x = rng.nextDouble() * size.width;
-      final y = rng.nextDouble() * size.height;
-      final sparkle = 0.5 + sin(t + i) * 0.5;
-      canvas.drawCircle(
-        Offset(x, y),
-        1.5 * sparkle,
-        Paint()..color = Colors.white.withOpacity(0.15 * sparkle),
-      );
-    }
-  }
-  @override
-  bool shouldRepaint(covariant _SparkleScatterPattern old) => old.t != t;
-}
-
-class _VerticalBarsPattern extends CustomPainter {
-  final double t;
-  _VerticalBarsPattern({required this.t});
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = Colors.white.withOpacity(0.04);
-    for (double x = 8; x < size.width; x += 14) {
-      final h = size.height * (0.5 + sin(x * 0.05 + t) * 0.2);
-      canvas.drawRect(
-        Rect.fromLTWH(x, size.height - h, 4, h),
-        paint,
-      );
-    }
-  }
-  @override
-  bool shouldRepaint(covariant _VerticalBarsPattern old) => old.t != t;
-}
-
-class _GridLinesPattern extends CustomPainter {
-  final double t;
-  _GridLinesPattern({required this.t});
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = Colors.white.withOpacity(0.05)..strokeWidth = 0.5;
-    for (double x = 0; x < size.width; x += 16) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
-    }
-    for (double y = 0; y < size.height; y += 16) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
-    }
-  }
-  @override
-  bool shouldRepaint(covariant _GridLinesPattern old) => old.t != t;
-}
-
-class _DotMeshPattern extends CustomPainter {
-  final double t;
-  _DotMeshPattern({required this.t});
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = Colors.white.withOpacity(0.08);
-    for (double x = 10; x < size.width; x += 16) {
-      for (double y = 10; y < size.height; y += 16) {
-        canvas.drawCircle(Offset(x, y), 1, paint);
-      }
-    }
-  }
-  @override
-  bool shouldRepaint(covariant _DotMeshPattern old) => old.t != t;
-}
-
-class _StarScatterPattern extends CustomPainter {
-  final double t;
-  _StarScatterPattern({required this.t});
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rng = Random(7);
-    for (int i = 0; i < 60; i++) {
-      final x = rng.nextDouble() * size.width;
-      final y = rng.nextDouble() * size.height;
-      final twinkle = 0.4 + sin(t * 1.5 + i) * 0.4;
-      canvas.drawCircle(
-        Offset(x, y),
-        1.0 + twinkle * 0.5,
-        Paint()..color = Colors.white.withOpacity(0.4 * twinkle),
-      );
-    }
-  }
-  @override
-  bool shouldRepaint(covariant _StarScatterPattern old) => old.t != t;
 }
