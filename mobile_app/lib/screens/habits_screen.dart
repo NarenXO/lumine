@@ -508,96 +508,123 @@ class _HabitsScreenState extends State<HabitsScreen>
   // 3. WEATHER TIMELINE
   // ══════════════════════════════════════════════════════════════
   Widget _buildWeatherCard() {
-    final currentHour = DateTime.now().hour;
-    final history = StatsService.emotionHistory;
+  final currentHour = DateTime.now().hour;
 
-    final Map<int, String> hourMap = {};
-    for (final e in history) {
-      final h = e['hour'] as int;
-      hourMap[h] = e['emotion'] as String;
-    }
+  // Demo data — seeded for screenshots
+  final Map<int, String> hourMap = {
+    6: 'calm',
+    7: 'hopeful',
+    8: 'grateful',
+    9: 'calm',
+    10: 'stressed',
+    11: 'anxious',
+    12: 'stressed',
+    13: 'calm',
+    14: 'hopeful',
+    15: 'happy',
+    16: 'grateful',
+    17: 'calm',
+    18: 'optimistic',
+    19: 'happy',
+    20: 'calm',
+    21: 'hopeful',
+    22: 'calm',
+  };
 
-    return _DarkBentoBox(
-      patternPainter: _DiagonalShimmerPatternPainter(t: _weatherController.value * 2 * pi),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            "TODAY'S EMOTIONAL WEATHER",
-            style: AppTheme.label(
-              size: 12,
-              letterSpacing: 1.6,
-              color: AppTheme.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 14),
-          SizedBox(
-            height: 90,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: 24,
-              itemBuilder: (context, hour) {
-                final emotion = hourMap[hour];
-                final isCurrent = hour == currentHour;
-                final displayH = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
-                final period = hour >= 12 ? 'PM' : 'AM';
-
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: isCurrent
-                              ? ThemeService.getEmotionColor().withOpacity(0.25)
-                              : Colors.transparent,
-                          border: isCurrent
-                              ? Border.all(
-                                  color: ThemeService.getEmotionColor(),
-                                  width: 2,
-                                )
-                              : null,
-                        ),
-                        child: Center(
-                          child: emotion == null
-                              ? Container(
-                                  width: 4,
-                                  height: 4,
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.textTertiary,
-                                    shape: BoxShape.circle,
-                                  ),
-                                )
-                              : _AnimatedWeatherIcon(
-                                  emotion: emotion,
-                                  controller: _weatherController,
-                                ),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        '$displayH $period',
-                        style: AppTheme.body(
-                          size: 10,
-                          weight: isCurrent ? FontWeight.w700 : FontWeight.w500,
-                          color: isCurrent ? AppTheme.textPrimary : AppTheme.textTertiary,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
+  // Also merge any real data on top
+  final history = StatsService.emotionHistory;
+  for (final e in history) {
+    final h = e['hour'] as int;
+    hourMap[h] = e['emotion'] as String;
   }
 
+  return _DarkBentoBox(
+    patternPainter: _DiagonalShimmerPatternPainter(
+        t: _weatherController.value * 2 * pi),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "TODAY'S EMOTIONAL WEATHER",
+          style: AppTheme.label(
+            size: 12,
+            letterSpacing: 1.6,
+            color: AppTheme.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 14),
+        SizedBox(
+          height: 90,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: 24,
+            itemBuilder: (context, hour) {
+              final emotion = hourMap[hour];
+              final isCurrent = hour == currentHour;
+              final displayH =
+                  hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
+              final period = hour >= 12 ? 'PM' : 'AM';
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isCurrent
+                            ? ThemeService.getEmotionColor()
+                                .withOpacity(0.25)
+                            : Colors.transparent,
+                        border: isCurrent
+                            ? Border.all(
+                                color: ThemeService.getEmotionColor(),
+                                width: 2,
+                              )
+                            : null,
+                      ),
+                      child: Center(
+                        child: emotion == null
+                            ? Container(
+                                width: 4,
+                                height: 4,
+                                decoration: BoxDecoration(
+                                  color: AppTheme.textTertiary,
+                                  shape: BoxShape.circle,
+                                ),
+                              )
+                            : _AnimatedWeatherIcon(
+                                emotion: emotion,
+                                controller: _weatherController,
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '$displayH $period',
+                      style: AppTheme.body(
+                        size: 10,
+                        weight: isCurrent
+                            ? FontWeight.w700
+                            : FontWeight.w500,
+                        color: isCurrent
+                            ? AppTheme.textPrimary
+                            : AppTheme.textTertiary,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    ),
+  );
+}
   // ══════════════════════════════════════════════════════════════
   // 4. WHAT YOUR BODY IS SAYING
   // ══════════════════════════════════════════════════════════════
@@ -661,121 +688,118 @@ class _HabitsScreenState extends State<HabitsScreen>
   // ══════════════════════════════════════════════════════════════
   // 5. WEARABLE SYNC
   // ══════════════════════════════════════════════════════════════
-  Widget _buildWearableCard() {
-    return _DarkBentoBox(
-      patternPainter: _RadarPatternPainter(
-        t: _radarController.value * 2 * pi,
-        active: _wearableActive,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              AnimatedBuilder(
-                animation: _pulseController,
-                builder: (_, __) {
-                  return Transform.scale(
-                    scale: _wearableActive
-                        ? 1.0 + sin(_pulseController.value * pi) * 0.08
-                        : 1.0,
-                    child: Icon(
-                      Icons.watch_rounded,
-                      color: _wearableActive
-                          ? const Color(0xFF10B981)
-                          : AppTheme.textTertiary,
-                      size: 20,
+ Widget _buildWearableCard() {
+  return _DarkBentoBox(
+    patternPainter: _RadarPatternPainter(
+      t: _radarController.value * 2 * pi,
+      active: _wearableActive,
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            AnimatedBuilder(
+              animation: _pulseController,
+              builder: (_, __) {
+                return Transform.scale(
+                  scale: _wearableActive
+                      ? 1.0 + sin(_pulseController.value * pi) * 0.08
+                      : 1.0,
+                  child: Icon(
+                    Icons.watch_rounded,
+                    color: _wearableActive
+                        ? const Color(0xFF10B981)
+                        : AppTheme.textTertiary,
+                    size: 20,
+                  ),
+                );
+              },
+            ),
+            const SizedBox(width: 8),
+            Text(
+              "WEARABLE SYNC",
+              style: AppTheme.label(
+                size: 12,
+                letterSpacing: 1.8,
+                color: AppTheme.textSecondary,
+              ),
+            ),
+            const Spacer(),
+            _wearableToggle(),
+          ],
+        ),
+        const SizedBox(height: 14),
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: AppTheme.bgSlateHigh,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                Icons.smartphone_rounded,
+                size: 18,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Motorola Edge 60 Pro',
+                    style: AppTheme.body(
+                      size: 14,
+                      weight: FontWeight.w600,
+                      color: AppTheme.textPrimary,
                     ),
-                  );
-                },
-              ),
-              const SizedBox(width: 8),
-              Text(
-                "WEARABLE SYNC",
-                style: AppTheme.label(
-                  size: 12,
-                  letterSpacing: 1.8,
-                  color: AppTheme.textSecondary,
-                ),
-              ),
-              const Spacer(),
-              _wearableToggle(),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: AppTheme.bgSlateHigh,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(Icons.smartphone_rounded, size: 18, color: AppTheme.textPrimary),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Motorola Edge 60 Pro',
-                      style: AppTheme.body(
-                        size: 14,
-                        weight: FontWeight.w600,
-                        color: AppTheme.textPrimary,
-                      ),
+                  ),
+                  Text(
+                    _wearableActive
+                        ? 'Reading your body every 4s'
+                        : 'Tap to connect Lumíne to your body',
+                    style: AppTheme.body(
+                      size: 12,
+                      color: AppTheme.textSecondary,
                     ),
-                    Text(
-                      _wearableActive
-                          ? 'Reading your body every 4s'
-                          : 'Tap to connect Lumíne to your body',
-                      style: AppTheme.body(
-                        size: 12,
-                        color: AppTheme.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              _bioMetric(Icons.favorite_rounded, _heartRate.toDouble(), ' bpm', const Color(0xFFE87A5F)),
-              const SizedBox(width: 8),
-              _bioMetric(Icons.show_chart_rounded, _hrv.toDouble(), ' ms', const Color(0xFF8B5CF6)),
-              const SizedBox(width: 8),
-              _bioMetric(Icons.directions_walk_rounded, _steps.toDouble(), '', const Color(0xFF10B981)),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: _devButton(
-                  'Trigger Spike',
-                  Icons.bolt_rounded,
-                  const Color(0xFFEF4444),
-                  _triggerSpike,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _devButton(
-                  'Reset',
-                  Icons.refresh_rounded,
-                  AppTheme.textSecondary,
-                  _resetBio,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        Row(
+          children: [
+            _bioMetric(
+              Icons.favorite_rounded,
+              _heartRate.toDouble(),
+              ' bpm',
+              const Color(0xFFE87A5F),
+            ),
+            const SizedBox(width: 8),
+            _bioMetric(
+              Icons.show_chart_rounded,
+              _hrv.toDouble(),
+              ' ms',
+              const Color(0xFF8B5CF6),
+            ),
+            const SizedBox(width: 8),
+            _bioMetric(
+              Icons.directions_walk_rounded,
+              _steps.toDouble(),
+              '',
+              const Color(0xFF10B981),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
 
   Widget _wearableToggle() {
     return GestureDetector(
