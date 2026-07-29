@@ -453,6 +453,12 @@ CONVERSATION SO FAR:
 
 FORMAT YOUR RESPONSE — ALWAYS EXACTLY THIS STRUCTURE:
 EMOTION: <one of: happy, sad, calm, angry, hopeful, anxious, grateful, stressed, optimistic, depressed, neutral>
+- ONLY change the emotion if the user is expressing something personal or emotional.
+- If the user asks a factual question, asks about app features, says something casual, or makes small talk, return their CURRENT emotion unchanged: {app_context.get('current_emotion', 'calm')}
+- Example: user asks "what is zen mode" → EMOTION should stay as their current emotion, NOT change to "calm" or "neutral"
+- Example: user says "I feel so tired and alone" → EMOTION should change to reflect what they're feeling (sad/stressed/depressed)
+THEME: <one of: peace, hope, rest, gratitude, patience, strength, comfort>
+RESPONSE: <your response — warm, specific, human, 1-3 sentences>
 THEME: <one of: peace, hope, rest, gratitude, patience, strength, comfort>
 RESPONSE: <your response — warm, specific, human, 1-3 sentences>"""
     gloo_response = call_gloo(system_prompt, text, temperature=0.9)
