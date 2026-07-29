@@ -16,36 +16,37 @@ class AppController extends ChangeNotifier {
 
   bool keyboardActive = false;
 
-  String currentEmotion = "calm";
+  String currentEmotion = 'calm';
 
   void updateEmotion(String emotion) {
     final e = emotion.toLowerCase().trim();
 
-    // Normalize all possible backend values
-    if (e == "anxiety" || e == "anxious") {
+    if (e == 'anxiety' || e == 'anxious') {
       anxiety += 0.1;
-      currentEmotion = "anxious";
-    } else if (e == "gratitude" || e == "grateful") {
+      currentEmotion = 'anxious';
+    } else if (e == 'gratitude' || e == 'grateful') {
       gratitude += 0.1;
-      currentEmotion = "grateful";
-    } else if (e == "anger" || e == "angry") {
+      currentEmotion = 'grateful';
+    } else if (e == 'anger' || e == 'angry') {
       reactivity += 0.1;
-      currentEmotion = "angry";
-    } else if (e == "sadness" || e == "sad") {
-      currentEmotion = "sad";
-    } else if (e == "joy" || e == "happy") {
-      currentEmotion = "happy";
-    } else if (e == "stress" || e == "stressed") {
+      currentEmotion = 'angry';
+    } else if (e == 'sadness' || e == 'sad') {
+      currentEmotion = 'sad';
+    } else if (e == 'joy' || e == 'happy') {
+      currentEmotion = 'happy';
+    } else if (e == 'stress' || e == 'stressed') {
       anxiety += 0.05;
-      currentEmotion = "stressed";
-    } else if (e == "hopeful") {
-      currentEmotion = "hopeful";
-    } else if (e == "optimistic") {
-      currentEmotion = "optimistic";
-    } else if (e == "depressed") {
-      currentEmotion = "depressed";
-    } else if (e == "calm" || e == "neutral") {
-      currentEmotion = "calm";
+      currentEmotion = 'stressed';
+    } else if (e == 'hopeful') {
+      currentEmotion = 'hopeful';
+    } else if (e == 'optimistic') {
+      currentEmotion = 'optimistic';
+    } else if (e == 'depressed') {
+      currentEmotion = 'depressed';
+    } else if (e == 'calm' || e == 'neutral') {
+      currentEmotion = 'calm';
+    } else {
+      currentEmotion = e;
     }
 
     notifyListeners();
