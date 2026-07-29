@@ -2,9 +2,10 @@ import 'dart:async';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:googleapis/calendar/v3.dart' as calendar;
 import 'package:http/http.dart' as http;
+import 'notification_service.dart';
 
 class CalendarService {
-    static final GoogleSignIn _googleSignIn = GoogleSignIn(
+  static final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: [calendar.CalendarApi.calendarReadonlyScope],
     serverClientId: '815651670494-o8d3ok0pvaaupnu57ru35e4iebf6nolb.apps.googleusercontent.com',
   );
@@ -51,7 +52,6 @@ class CalendarService {
 
       final now = DateTime.now();
       final tomorrow = now.add(const Duration(hours: 24));
-      print('Fetching calendar events...');
       final events = await calendarApi.events.list(
         'primary',
         timeMin: now,
@@ -67,8 +67,13 @@ class CalendarService {
         final start = event.start?.dateTime ?? event.start?.date;
         if (start == null) continue;
 
-        final startTime = start is DateTime ? start : DateTime.parse(start.toString());
+        final startTime = start is DateTime
+            ? start
+            : DateTime.parse(start.toString());
         final minutesUntil = startTime.difference(now).inMinutes;
+
+        // Skip past events
+        if (minutesUntil < 0) continue;
 
         result.add({
           'title': event.summary ?? 'Untitled Event',
@@ -79,9 +84,8 @@ class CalendarService {
       }
 
       return result;
-        } catch (e) {
+    } catch (e) {
       print('Calendar fetch error: $e');
-      print('Calendar fetch error details: ${e.toString()}');
       return [];
     }
   }
@@ -94,7 +98,6 @@ class CalendarService {
   }
 
   // ─── Check for imminent events ────────────────────────
-  // Returns event if one starts within next 30 minutes
   static Future<Map<String, dynamic>?> getImminentEvent() async {
     final events = await getUpcomingEvents(maxResults: 3);
     for (final event in events) {
@@ -112,21 +115,21 @@ class CalendarService {
 
     if (title.contains('meeting') || title.contains('call') ||
         title.contains('interview')) {
-      return "The Lord will fight for you; you need only to be still. — Exodus 14:14";
+      return 'The Lord will fight for you; you need only to be still. — Exodus 14:14';
     } else if (title.contains('presentation') || title.contains('review') ||
         title.contains('demo')) {
-      return "I can do all this through him who gives me strength. — Philippians 4:13";
+      return 'I can do all this through him who gives me strength. — Philippians 4:13';
     } else if (title.contains('doctor') || title.contains('hospital') ||
         title.contains('appointment')) {
-      return "He heals the brokenhearted and binds up their wounds. — Psalm 147:3";
+      return 'He heals the brokenhearted and binds up their wounds. — Psalm 147:3';
     } else if (title.contains('exam') || title.contains('test') ||
         title.contains('study')) {
-      return "For God has not given us a spirit of fear, but of power and love. — 2 Timothy 1:7";
+      return 'For God has not given us a spirit of fear, but of power and love. — 2 Timothy 1:7';
     } else if (title.contains('date') || title.contains('dinner') ||
         title.contains('lunch')) {
-      return "Let love and faithfulness never leave you. — Proverbs 3:3";
+      return 'Let love and faithfulness never leave you. — Proverbs 3:3';
     } else {
-      return "Be strong and courageous. Do not be afraid; do not be discouraged. — Joshua 1:9";
+      return 'Be strong and courageous. Do not be afraid; do not be discouraged. — Joshua 1:9';
     }
   }
 
@@ -135,9 +138,44 @@ class CalendarService {
     if (minutesUntil <= 5) {
       return "You are about to walk into this moment. You don't walk in alone.";
     } else if (minutesUntil <= 15) {
-      return "Something is approaching. Take one breath with me before you go in.";
+      return 'Something is approaching. Take one breath with me before you go in.';
     } else {
       return "Lumíne sees what's coming in your day. You were made for this moment.";
+    }
+  }
+
+  // ─── Schedule notifications for upcoming events ────────
+  static Future<void> scheduleEventNotifications() async {
+    final events = await CalendarService.getUpcomingEvents();
+    for (final event in events) {
+      final minutes = event['minutesUntil'] as int;
+      final title = event['title'] as String;
+
+      if (minutes <= 0) continue;
+
+      // Notify 15 minutes before
+      final notifyIn15 = minutes - 15;
+      if (notifyIn15 > 0) {
+        final scripture = CalendarService.getEventScripture(title);
+        Future.delayed(Duration(minutes: notifyIn15), () {
+          NotificationService.showNotification(
+            title: 'Lumíne · $title in 15 min',
+            body: scripture,
+          );
+        });
+      }
+
+      // Notify 5 minutes before
+      final notifyIn5 = minutes - 5;
+      if (notifyIn5 > 0) {
+        final message = CalendarService.getLumineMessage(title, 5);
+        Future.delayed(Duration(minutes: notifyIn5), () {
+          NotificationService.showNotification(
+            title: 'Lumíne · $title is soon',
+            body: message,
+          );
+        });
+      }
     }
   }
 }

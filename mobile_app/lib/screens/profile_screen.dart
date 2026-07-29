@@ -9,6 +9,8 @@ import '../services/theme_service.dart';
 import '../services/memory_service.dart';
 import '../services/app_theme.dart';
 import '../widgets/lumine_background.dart';
+import 'calendar_screen.dart';
+import '../services/calendar_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -950,66 +952,85 @@ class _ProfileScreenState extends State<ProfileScreen>
   // ═══════════════════════════════════════════════════════════
   // 8. CALENDAR
   // ═══════════════════════════════════════════════════════════
-  Widget _buildCalendarCard() {
-    return _ProfileBentoBox(
-      accentColor: _calm,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              AnimatedBuilder(
-                animation: _floatController,
-                builder: (_, __) => Transform.translate(
-                  offset: Offset(0, sin(_floatController.value * pi) * 2),
-                  child: Icon(Icons.calendar_month_rounded, color: _calm, size: 18),
+ Widget _buildCalendarCard() {
+  final connected = CalendarService.isSignedIn;
+
+  return _ProfileBentoBox(
+    accentColor: _calm,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            AnimatedBuilder(
+              animation: _floatController,
+              builder: (_, __) => Transform.translate(
+                offset: Offset(0, sin(_floatController.value * pi) * 2),
+                child: Icon(Icons.calendar_month_rounded,
+                    color: _calm, size: 18),
+              ),
+            ),
+            const SizedBox(width: 8),
+            _sectionLabel('CALENDAR CONNECTION'),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Text(
+          connected
+              ? 'Connected. Lumíne walks with your day.'
+              : 'Connect Google Calendar to receive verses timed to your events.',
+          style: GoogleFonts.manrope(
+            fontSize: 13,
+            color: AppTheme.textSecondary,
+            height: 1.5,
+          ),
+        ),
+        const SizedBox(height: 14),
+        GestureDetector(
+          onTap: () async {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const CalendarScreen(),
+              ),
+            );
+            // Refresh after returning
+            setState(() {});
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+            decoration: BoxDecoration(
+              color: _calm.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: _calm.withOpacity(0.35)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  connected
+                      ? Icons.check_circle_rounded
+                      : Icons.link_rounded,
+                  color: _calm,
+                  size: 16,
                 ),
-              ),
-              const SizedBox(width: 8),
-              _sectionLabel('CALENDAR CONNECTION'),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            _calendarConnected
-                ? 'Connected. Lumíne walks with your day.'
-                : 'Connect Google Calendar to receive verses timed to your events.',
-            style: GoogleFonts.manrope(
-              fontSize: 13, color: AppTheme.textSecondary, height: 1.5,
+                const SizedBox(width: 6),
+                Text(
+                  connected ? 'Connected · Open' : 'Connect',
+                  style: GoogleFonts.manrope(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: _calm,
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 14),
-          GestureDetector(
-            onTap: () => setState(() => _calendarConnected = !_calendarConnected),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-              decoration: BoxDecoration(
-                color: _calm.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: _calm.withOpacity(0.35)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    _calendarConnected ? Icons.check_circle_rounded : Icons.link_rounded,
-                    color: _calm, size: 16,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    _calendarConnected ? 'Connected' : 'Connect',
-                    style: GoogleFonts.manrope(
-                      fontSize: 13, fontWeight: FontWeight.w700, color: _calm,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
 
   // ═══════════════════════════════════════════════════════════
   // 9. SETTINGS

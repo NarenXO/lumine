@@ -138,4 +138,33 @@ class NotificationService {
   static Future<void> cancelAll() async {
     await _notifications.cancelAll();
   }
+
+static Future<void> showNotification({
+  required String title,
+  required String body,
+}) async {
+  await initialize();
+
+  const AndroidNotificationDetails androidDetails =
+      AndroidNotificationDetails(
+    'lumine_calendar',
+    'Lumíne Calendar',
+    channelDescription: 'Pre-event scripture notifications from Lumíne',
+    importance: Importance.high,
+    priority: Priority.high,
+    color: Color(0xFFF1D98A),
+  );
+
+  const NotificationDetails details = NotificationDetails(
+    android: androidDetails,
+  );
+
+  await _notifications.show(
+    DateTime.now().millisecondsSinceEpoch ~/ 1000,
+    title,
+    body,
+    details,
+  );
+}
+
 }

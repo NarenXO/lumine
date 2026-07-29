@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
-import 'dart:ui';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../services/calendar_service.dart';
 import '../services/tts_service.dart';
 import '../services/app_controller.dart';
 import '../services/theme_service.dart';
+import '../services/app_theme.dart';
+import '../widgets/lumine_background.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -15,17 +16,30 @@ class CalendarScreen extends StatefulWidget {
   State<CalendarScreen> createState() => _CalendarScreenState();
 }
 
-class _CalendarScreenState extends State<CalendarScreen> {
+class _CalendarScreenState extends State<CalendarScreen>
+    with TickerProviderStateMixin {
   bool _signedIn = false;
   bool _loading = false;
   List<Map<String, dynamic>> _events = [];
   Map<String, dynamic>? _imminentEvent;
   Timer? _checkTimer;
+  late AnimationController _pulseController;
 
   @override
   void initState() {
     super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
     _checkSignIn();
+  }
+
+  @override
+  void dispose() {
+    _checkTimer?.cancel();
+    _pulseController.dispose();
+    super.dispose();
   }
 
   void _checkSignIn() {
@@ -60,22 +74,23 @@ class _CalendarScreenState extends State<CalendarScreen> {
         _loading = false;
       });
       if (imminent != null) _triggerPreEventIntervention(imminent);
+      CalendarService.scheduleEventNotifications();
     }
   }
 
   void _startEventMonitoring() {
     _checkTimer?.cancel();
-    _checkTimer =
-        Timer.periodic(const Duration(minutes: 5), (_) => _loadEvents());
+    _checkTimer = Timer.periodic(
+        const Duration(minutes: 5), (_) => _loadEvents());
   }
 
   void _triggerPreEventIntervention(Map<String, dynamic> event) async {
-    AppController().setEmotion("stressed");
+    AppController().setEmotion('stressed');
     final title = event['title'] as String;
     final minutes = event['minutesUntil'] as int;
     final scripture = CalendarService.getEventScripture(title);
     final message = CalendarService.getLumineMessage(title, minutes);
-    await TtsService.speak("$message $scripture");
+    await TtsService.speak('$message $scripture');
     if (mounted) _showInterventionBanner(title, message, scripture, minutes);
   }
 
@@ -84,71 +99,103 @@ class _CalendarScreenState extends State<CalendarScreen> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (_) => BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-        child: Container(
-          padding: const EdgeInsets.all(32),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.9),
-            borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(40)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text("✦ PREPARING FOR",
-                  style: GoogleFonts.plusJakartaSans(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 2,
-                      color: Colors.black38)),
-              const SizedBox(height: 8),
-              Text(eventTitle,
-                  style: GoogleFonts.playfairDisplay(
-                      fontSize: 28, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 20),
-              Text(message,
-                  style: GoogleFonts.plusJakartaSans(
-                      fontSize: 15, height: 1.6, color: Colors.black87)),
-              const SizedBox(height: 16),
-              Text('"$scripture"',
-                  style: GoogleFonts.playfairDisplay(
-                      fontSize: 16,
-                      fontStyle: FontStyle.italic,
-                      color: Colors.black54)),
-              const SizedBox(height: 30),
-              SizedBox(
-                width: double.infinity,
-                height: 60,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1A1A1A),
-                      foregroundColor: Colors.white,
-                      shape: const StadiumBorder()),
-                  child: const Text("I am ready."),
+      builder: (_) => Container(
+        padding: const EdgeInsets.all(28),
+        decoration: BoxDecoration(
+          color: AppTheme.bgSlate,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+          border: Border.all(color: AppTheme.bgSlateGlow),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Handle
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppTheme.borderSoft,
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'PREPARING FOR',
+              style: GoogleFonts.manrope(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 2,
+                color: AppTheme.goldMid.withOpacity(0.7),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              eventTitle,
+              style: GoogleFonts.cormorantGaramond(
+                fontSize: 26,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              message,
+              style: GoogleFonts.manrope(
+                fontSize: 14,
+                height: 1.6,
+                color: AppTheme.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '"$scripture"',
+              style: GoogleFonts.literata(
+                fontSize: 15,
+                fontStyle: FontStyle.italic,
+                color: AppTheme.textPrimary,
+                height: 1.6,
+              ),
+            ),
+            const SizedBox(height: 28),
+            GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                decoration: BoxDecoration(
+                  color: AppTheme.goldMid.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                      color: AppTheme.goldMid.withOpacity(0.4)),
+                ),
+                child: Center(
+                  child: Text(
+                    'I am ready.',
+                    style: GoogleFonts.manrope(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.goldMid,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
   @override
-  void dispose() {
-    _checkTimer?.cancel();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppTheme.bgDeep,
       body: Stack(
         children: [
-          const CalendarMeshBackground(),
+          const Positioned.fill(child: LumineBackground()),
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -159,10 +206,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   _buildHeader(),
                   const SizedBox(height: 30),
                   if (!_signedIn)
-                    _buildSignInPrompt()
+                    Expanded(child: _buildSignInPrompt())
                   else ...[
-                    if (_imminentEvent != null) _buildImminentCard(),
-                    const SizedBox(height: 20),
+                    if (_imminentEvent != null) ...[
+                      _buildImminentCard(),
+                      const SizedBox(height: 16),
+                    ],
                     _buildSectionHeader("Today's Schedule"),
                     const SizedBox(height: 12),
                     Expanded(child: _buildEventList()),
@@ -184,90 +233,191 @@ class _CalendarScreenState extends State<CalendarScreen> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Calendar",
-                style: GoogleFonts.playfairDisplay(
-                    fontSize: 32, fontWeight: FontWeight.bold)),
-            Text("Lumíne walks ahead of you.",
-                style: GoogleFonts.plusJakartaSans(
-                    fontSize: 12, color: Colors.black45)),
+            Text(
+              'Calendar',
+              style: GoogleFonts.cormorantGaramond(
+                fontSize: 32,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+            Text(
+              'Lumíne walks ahead of you.',
+              style: GoogleFonts.manrope(
+                fontSize: 12,
+                color: AppTheme.textTertiary,
+              ),
+            ),
           ],
         ),
-        IconButton(
-          onPressed: () => Navigator.pop(context),
-          icon: const Icon(Icons.arrow_back_ios_rounded,
-              color: Colors.black45, size: 18),
+        GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: AppTheme.bgSlate,
+              shape: BoxShape.circle,
+              border: Border.all(color: AppTheme.borderSoft),
+            ),
+            child: Icon(Icons.arrow_back_rounded,
+                color: AppTheme.textSecondary, size: 18),
+          ),
         ),
       ],
     );
   }
 
   Widget _buildSignInPrompt() {
-    return CalendarBentoCard(
-      child: Column(
-        children: [
-          const Icon(Icons.calendar_today_rounded,
-              size: 50, color: Colors.black12),
-          const SizedBox(height: 20),
-          Text(
-            "Connect your calendar so Lumíne can speak before your important moments.",
-            textAlign: TextAlign.center,
-            style: GoogleFonts.plusJakartaSans(
-                fontSize: 14, color: Colors.black54, height: 1.6),
-          ),
-          const SizedBox(height: 30),
-          SizedBox(
-            width: double.infinity,
-            height: 60,
-            child: ElevatedButton(
-              onPressed: _loading ? null : _signIn,
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1A1A1A),
-                  foregroundColor: Colors.white,
-                  shape: const StadiumBorder()),
-              child: _loading
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : const Text("Connect Google Calendar"),
+    return Center(
+      child: _CalendarBentoBox(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedBuilder(
+              animation: _pulseController,
+              builder: (_, __) {
+                return Container(
+                  width: 70,
+                  height: 70,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppTheme.bgSlateHigh,
+                    border: Border.all(
+                      color: AppTheme.goldMid.withOpacity(
+                          0.3 + _pulseController.value * 0.2),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.goldMid.withOpacity(
+                            0.1 + _pulseController.value * 0.1),
+                        blurRadius: 20,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: Icon(Icons.calendar_month_rounded,
+                      size: 32, color: AppTheme.goldMid),
+                );
+              },
             ),
-          ),
-        ],
+            const SizedBox(height: 24),
+            Text(
+              'Connect your calendar so Lumíne can speak before your important moments.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.manrope(
+                fontSize: 14,
+                color: AppTheme.textSecondary,
+                height: 1.6,
+              ),
+            ),
+            const SizedBox(height: 28),
+            GestureDetector(
+              onTap: _loading ? null : _signIn,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                decoration: BoxDecoration(
+                  color: AppTheme.goldMid.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                      color: AppTheme.goldMid.withOpacity(0.4)),
+                ),
+                child: Center(
+                  child: _loading
+                      ? SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            color: AppTheme.goldMid,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.link_rounded,
+                                color: AppTheme.goldMid, size: 18),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Connect Google Calendar',
+                              style: GoogleFonts.manrope(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.goldMid,
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     ).animate().fadeIn();
   }
 
   Widget _buildImminentCard() {
     final title = _imminentEvent!['title'] as String;
-    return CalendarBentoCard(
-      padding: 24,
+    final minutes = _imminentEvent!['minutesUntil'] as int;
+
+    return _CalendarBentoBox(
+      accentColor: const Color(0xFFFFA560),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text("COMING SOON",
-                  style: GoogleFonts.plusJakartaSans(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1,
-                      color: Colors.indigoAccent)),
-              Text("${_imminentEvent!['minutesUntil']}m",
-                  style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black38)),
+              Text(
+                'COMING SOON',
+                style: GoogleFonts.manrope(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.5,
+                  color: const Color(0xFFFFA560),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFA560).withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                      color: const Color(0xFFFFA560).withOpacity(0.3)),
+                ),
+                child: Text(
+                  '${minutes}m away',
+                  style: GoogleFonts.manrope(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFFFFA560),
+                  ),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
-          Text(title,
-              style: GoogleFonts.playfairDisplay(
-                  fontSize: 22, fontWeight: FontWeight.bold)),
+          Text(
+            title,
+            style: GoogleFonts.cormorantGaramond(
+              fontSize: 22,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textPrimary,
+            ),
+          ),
           const SizedBox(height: 8),
           Text(
             '"${CalendarService.getEventScripture(title)}"',
-            style: GoogleFonts.playfairDisplay(
-                fontSize: 15,
-                fontStyle: FontStyle.italic,
-                color: Colors.black54),
+            style: GoogleFonts.literata(
+              fontSize: 14,
+              fontStyle: FontStyle.italic,
+              color: AppTheme.textSecondary,
+              height: 1.5,
+            ),
           ),
         ],
       ),
@@ -275,52 +425,101 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Widget _buildEventList() {
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_loading) {
+      return Center(
+        child: CircularProgressIndicator(
+          color: AppTheme.goldMid,
+          strokeWidth: 2,
+        ),
+      );
+    }
+
     if (_events.isEmpty) {
       return Center(
-          child: Text("No events today.",
-              style: GoogleFonts.plusJakartaSans(color: Colors.black26)));
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.event_available_rounded,
+                color: AppTheme.textTertiary, size: 40),
+            const SizedBox(height: 12),
+            Text(
+              'No events today.',
+              style: GoogleFonts.manrope(
+                  fontSize: 14, color: AppTheme.textTertiary),
+            ),
+          ],
+        ),
+      );
     }
 
     return ListView.builder(
+      physics: const BouncingScrollPhysics(),
       itemCount: _events.length,
       itemBuilder: (context, index) {
         final event = _events[index];
+        final minutes = event['minutesUntil'] as int;
+if (minutes < 0) return const SizedBox.shrink();
+final isNext = index == 0;
+
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
-          child: CalendarBentoCard(
-            padding: 20,
+          child: _CalendarBentoBox(
+            accentColor: isNext ? AppTheme.goldMid : null,
             child: Row(
               children: [
+                // Time pill
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppTheme.bgSlateHigh,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppTheme.borderSoft),
+                  ),
+                  child: Text(
+                   minutes < 60
+    ? '${minutes}m'
+    : '${(minutes / 60).floor()}h ${minutes % 60}m',
+                    style: GoogleFonts.manrope(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(event['title'],
-                          style: GoogleFonts.plusJakartaSans(
-                              fontSize: 15, fontWeight: FontWeight.bold)),
+                      Text(
+                        event['title'],
+                        style: GoogleFonts.manrope(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
                       const SizedBox(height: 4),
                       Text(
                         '"${CalendarService.getEventScripture(event['title'])}"',
-                        maxLines: 1,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.playfairDisplay(
-                            fontSize: 13,
-                            fontStyle: FontStyle.italic,
-                            color: Colors.black38),
+                        style: GoogleFonts.literata(
+                          fontSize: 12,
+                          fontStyle: FontStyle.italic,
+                          color: AppTheme.textTertiary,
+                        ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 12),
-                Text("${event['minutesUntil']}m",
-                    style: GoogleFonts.plusJakartaSans(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black26)),
+                if (isNext)
+                  Icon(Icons.chevron_right_rounded,
+                      color: AppTheme.goldMid.withOpacity(0.6), size: 20),
               ],
             ),
-          ),
+          ).animate().fadeIn(delay: (index * 80).ms),
         );
       },
     );
@@ -328,92 +527,91 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   Widget _buildFooterActions() {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 20),
+      padding: const EdgeInsets.symmetric(vertical: 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          TextButton(
-              onPressed: _loadEvents,
-              child: Text("Refresh",
-                  style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black45))),
-          TextButton(
-              onPressed: () async {
-                await CalendarService.signOut();
-                setState(() => _signedIn = false);
-              },
-              child: Text("Disconnect",
-                  style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12, color: Colors.black26))),
+          GestureDetector(
+            onTap: _loadEvents,
+            child: Row(
+              children: [
+                Icon(Icons.refresh_rounded,
+                    color: AppTheme.textTertiary, size: 16),
+                const SizedBox(width: 6),
+                Text(
+                  'Refresh',
+                  style: GoogleFonts.manrope(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textTertiary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          GestureDetector(
+            onTap: () async {
+              await CalendarService.signOut();
+              setState(() => _signedIn = false);
+            },
+            child: Text(
+              'Disconnect',
+              style: GoogleFonts.manrope(
+                fontSize: 12,
+                color: const Color(0xFFE85D5D).withOpacity(0.6),
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
   Widget _buildSectionHeader(String title) {
-    return Text(title,
-        style: GoogleFonts.playfairDisplay(
-            fontSize: 22, fontWeight: FontWeight.bold));
-  }
-}
-
-class CalendarBentoCard extends StatelessWidget {
-  final Widget child;
-  final double? height;
-  final double padding;
-  const CalendarBentoCard(
-      {super.key, required this.child, this.height, this.padding = 24});
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: height,
-      width: double.infinity,
-      padding: EdgeInsets.all(padding),
-      decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(32),
-          border: Border.all(color: Colors.black.withOpacity(0.05)),
-          boxShadow: [
-            BoxShadow(
-                color: Colors.black.withOpacity(0.02),
-                blurRadius: 20,
-                offset: const Offset(0, 10))
-          ]),
-      child: child,
-    );
-  }
-}
-
-class CalendarMeshBackground extends StatelessWidget {
-  const CalendarMeshBackground({super.key});
-  @override
-  Widget build(BuildContext context) {
-       return AnimatedContainer(
-      duration: const Duration(milliseconds: 1200),
-      curve: Curves.easeInOut,
-      color: ThemeService.getEmotionColor(),
-      child: Stack(
-        children: [
-          Positioned(
-              top: -50,
-              right: -50,
-              child: _glow(const Color(0xFFFDE047).withOpacity(0.2))),
-          Positioned(
-              bottom: 100,
-              left: -50,
-              child: _glow(const Color(0xFFFBCFE8).withOpacity(0.3))),
-        ],
+    return Text(
+      title,
+      style: GoogleFonts.cormorantGaramond(
+        fontSize: 22,
+        fontWeight: FontWeight.w600,
+        color: AppTheme.textPrimary,
       ),
     );
   }
+}
 
-  Widget _glow(Color c) => Container(
-        width: 300,
-        height: 300,
-        decoration: BoxDecoration(shape: BoxShape.circle, color: c),
-      )
-          .animate(onPlay: (c) => c.repeat(reverse: true))
-          .moveY(begin: 0, end: 30, duration: 5.seconds);
+// ══════════════════════════════════════════════════════════════════
+// CALENDAR BENTO BOX
+// ══════════════════════════════════════════════════════════════════
+class _CalendarBentoBox extends StatelessWidget {
+  final Widget child;
+  final Color? accentColor;
+
+  const _CalendarBentoBox({required this.child, this.accentColor});
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = accentColor ?? AppTheme.bgSlateGlow;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppTheme.bgSlate,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppTheme.bgSlateGlow.withOpacity(0.6)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+          BoxShadow(
+            color: accent.withOpacity(0.06),
+            blurRadius: 20,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
 }
