@@ -136,29 +136,36 @@ class _HabitsScreenState extends State<HabitsScreen>
     });
   }
 
-  void _triggerSpike() {
-    setState(() {
-      _heartRate = 118 + _random.nextInt(8);
-      _stressScore = 0.85;
-      _lastSpike = DateTime.now();
-      _isFlashing = true;
-    });
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (mounted) setState(() => _isFlashing = false);
-    });
-    Future.delayed(const Duration(milliseconds: 400), () {
-      if (!mounted) return;
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const SacredInterruptionScreen(
-            scriptureText: 'Come to me, all you who are weary and burdened, and I will give you rest.',
-            scriptureRef: 'Matthew 11:28',
-          ),
+ void _triggerSpike() {
+  setState(() {
+    _heartRate = 118 + _random.nextInt(8);
+    _stressScore = 0.85;
+    _lastSpike = DateTime.now();
+    _isFlashing = true;
+  });
+
+  // Update global app emotion immediately
+  AppController().setEmotion('stressed');
+  StatsService.recordEmotion('stressed');
+
+  Future.delayed(const Duration(milliseconds: 500), () {
+    if (mounted) setState(() => _isFlashing = false);
+  });
+
+  Future.delayed(const Duration(milliseconds: 400), () {
+    if (!mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const SacredInterruptionScreen(
+          scriptureText:
+              'Come to me, all you who are weary and burdened, and I will give you rest.',
+          scriptureRef: 'Matthew 11:28',
         ),
-      );
-    });
-  }
+      ),
+    );
+  });
+}
 
   void _resetBio() {
     setState(() {
