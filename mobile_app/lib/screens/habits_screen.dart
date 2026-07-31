@@ -507,29 +507,15 @@ class _HabitsScreenState extends State<HabitsScreen>
   // ══════════════════════════════════════════════════════════════
   // 3. WEATHER TIMELINE
   // ══════════════════════════════════════════════════════════════
-  Widget _buildWeatherCard() {
+ Widget _buildWeatherCard() {
   final currentHour = DateTime.now().hour;
+  final history = StatsService.emotionHistory;
 
-  // Demo data — seeded for screenshots
-  final Map<int, String> hourMap = {
-    6: 'calm',
-    7: 'hopeful',
-    8: 'grateful',
-    9: 'calm',
-    10: 'stressed',
-    11: 'anxious',
-    12: 'stressed',
-    13: 'calm',
-    14: 'hopeful',
-    15: 'happy',
-    16: 'grateful',
-    17: 'calm',
-    18: 'optimistic',
-    19: 'happy',
-    20: 'calm',
-    21: 'hopeful',
-    22: 'calm',
-  };
+  final Map<int, String> hourMap = {};
+  for (final e in history) {
+    final h = e['hour'] as int;
+    hourMap[h] = e['emotion'] as String;
+  }
 
   // Also merge any real data on top
   final history = StatsService.emotionHistory;
