@@ -268,34 +268,7 @@ class _HabitsScreenState extends State<HabitsScreen>
                       .fadeIn(delay: 500.ms, duration: 600.ms)
                       .slideY(begin: 0.2, curve: Curves.easeOut),
 
-                  const SizedBox(height: 120),
-                  const SizedBox(height: 14),
-GestureDetector(
-  onTap: _triggerSpike,
-  child: Container(
-    padding: const EdgeInsets.symmetric(vertical: 10),
-    decoration: BoxDecoration(
-      color: const Color(0xFFEF4444).withOpacity(0.15),
-      borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: const Color(0xFFEF4444).withOpacity(0.4)),
-    ),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(Icons.bolt_rounded, color: const Color(0xFFEF4444), size: 15),
-        const SizedBox(width: 6),
-        Text(
-          'Trigger Spike',
-          style: AppTheme.body(
-            size: 13,
-            weight: FontWeight.w700,
-            color: const Color(0xFFEF4444),
-          ),
-        ),
-      ],
-    ),
-  ),
-),
+                 const SizedBox(height: 120),
                 ],
               ),
             ),
@@ -715,7 +688,7 @@ GestureDetector(
   // ══════════════════════════════════════════════════════════════
   // 5. WEARABLE SYNC
   // ══════════════════════════════════════════════════════════════
- Widget _buildWearableCard() {
+Widget _buildWearableCard() {
   return _DarkBentoBox(
     patternPainter: _RadarPatternPainter(
       t: _radarController.value * 2 * pi,
@@ -823,11 +796,32 @@ GestureDetector(
             ),
           ],
         ),
+        const SizedBox(height: 14),
+        Row(
+          children: [
+            Expanded(
+              child: _devButton(
+                'Trigger Spike',
+                Icons.bolt_rounded,
+                const Color(0xFFEF4444),
+                _triggerSpike,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _devButton(
+                'Reset',
+                Icons.refresh_rounded,
+                AppTheme.textSecondary,
+                _resetBio,
+              ),
+            ),
+          ],
+        ),
       ],
     ),
   );
 }
-
   Widget _wearableToggle() {
     return GestureDetector(
       onTap: () {
